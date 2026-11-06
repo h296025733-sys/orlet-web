@@ -7,7 +7,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
   function pause(token){return new Promise(resolve=>{const timer=setTimeout(()=>{waiting=null;resolve(token===generation);},2500);waiting={timer,resolve};});}
   function post(base,versionId){
     const key=base+':'+(versionId||'preparing');let job=pending.get(key);
-    if(!job){job=api(base,{method:'POST',body:JSON.stringify(versionId?{versionId}:{}),...(globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{})});pending.set(key,job);job.finally(()=>{if(pending.get(key)===job)pending.delete(key);}).catch(()=>{});}
+    if(!job){job=api(base+'?background=1',{method:'POST',body:JSON.stringify(versionId?{versionId}:{}),...(globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{})});pending.set(key,job);job.finally(()=>{if(pending.get(key)===job)pending.delete(key);}).catch(()=>{});}
     return job;
   }
   function status(message,retry=false){$('#analysis-status').textContent=message;$('#analysis-status').hidden=!message;$('#analysis-retry').hidden=!retry;}
@@ -27,11 +27,13 @@ export function createAnalysisUi({api,$,esc,enabled}){
     busy=true;status('正在分析…');
     try{
       const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
-      const config=await read('/ai/status');if(token!==generation)return;
-      if(!config.configured){status('请先在主机连接 DeepSeek');return;}
       const base=pathFor(item),query=item.versionId?'?versionId='+encodeURIComponent(item.versionId):'';
       let data=await read(base+query),prepared=false,polls=0,submitted=false,pollQuery=query;const deadline=Date.now()+120000;
+      if(token!==generation)return;if(data.status==='ready'&&data.result){render(data);return;}
+      const config=await read('/ai/status');if(token!==generation)return;
+      if(!config.configured){status('请先在主机连接 DeepSeek');return;}
       while(token===generation){
+        if(data.status==='preparing'&&data.phase==='analysis')data={...data,status:'running'};
         if(data.status==='ready'&&data.result){render(data);return;}
         if(data.status==='body_unavailable'){
           if(prepareAgain&&!prepared){prepared=true;data=await post(base);continue;}
