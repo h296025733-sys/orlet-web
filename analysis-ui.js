@@ -30,7 +30,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
       const config=await read('/ai/status');if(token!==generation)return;
       if(!config.configured){status('请先在主机连接 DeepSeek');return;}
       const base=pathFor(item),query=item.versionId?'?versionId='+encodeURIComponent(item.versionId):'';
-      let data=await read(base+query),prepared=false,polls=0,submitted=false;const deadline=Date.now()+120000;
+      let data=await read(base+query),prepared=false,polls=0,submitted=false,pollQuery=query;const deadline=Date.now()+120000;
       while(token===generation){
         if(data.status==='ready'&&data.result){render(data);return;}
         if(data.status==='body_unavailable'){
@@ -38,6 +38,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
           throw new Error(data.error||'原文暂未取得，请稍后重试');
         }
         if(!['missing','preparing','running','error'].includes(data.status))throw new Error('暂未完成，请稍后重试');
+        if(data.status==='running'&&/^[a-f0-9]{64}$/.test(data.jobId)){const pinned=query||(data.versionId?'?versionId='+encodeURIComponent(data.versionId):'');pollQuery=pinned+(pinned?'&':'?')+'jobId='+encodeURIComponent(data.jobId);}
         if(['missing','error'].includes(data.status)&&(item.versionId||data.versionId)){
           if(submitted)throw new Error(data.error||'暂未确认分析请求，请重试');
           submitted=true;status('正在分析…');try{data=await post(base,item.versionId||data.versionId);}catch(error){if(error.status&&error.status<500)throw error;data={status:'running'};}continue;
@@ -46,8 +47,8 @@ export function createAnalysisUi({api,$,esc,enabled}){
         if(data.status==='missing'&&!prepared){prepared=true;data=await post(base);continue;}
         if(polls>=48||Date.now()>=deadline)throw new Error(data.status==='running'?'分析仍在继续，可稍后查看':'文章还在准备，请稍后重试');
         if(!await pause(token)||token!==generation)return;
-        if(Date.now()>=deadline)throw new Error('文章还在准备，请稍后重试');
-        polls++;try{data=await read(base+query);}catch(error){if(error.status&&error.status<500)throw error;status('正在重新连接…');}
+        if(Date.now()>=deadline)throw new Error(data.status==='running'?'分析仍在继续，可稍后查看':'文章还在准备，请稍后重试');
+        polls++;try{data=await read(base+pollQuery);}catch(error){if(error.status&&error.status<500)throw error;status('正在重新连接…');}
       }
     }catch(error){if(token===generation)status(error.status===409?'暂时无法取得正文，请稍后重试':error.status===503?'请先在主机连接 DeepSeek':['TimeoutError','AbortError'].includes(error.name)?'请求用时较长，请稍后重试':error.message||'分析暂不可用',error.status!==503);}
     finally{if(token===generation)busy=false;}

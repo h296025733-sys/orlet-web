@@ -1,6 +1,6 @@
 import {interpretXhsTime} from './xhs-time.js?v=35dca5b261d0';
 import {createLibraryUi} from './library-ui.js?v=257a8196ebff';
-import {createAnalysisUi} from './analysis-ui.js?v=b6e92cd12ff8';
+import {createAnalysisUi} from './analysis-ui.js?v=29b8c7f6a94f';
 const $=s=>document.querySelector(s);
 const platforms={x:'X',xiaohongshu:'小红书',wechat:'微信公众号'};
 const visiblePlatforms=new Set(['x','xiaohongshu','wechat']);
