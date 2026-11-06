@@ -24,7 +24,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
     status('');
   }
   async function run(item,token,prepareAgain=false){
-    busy=true;status('正在分析…');
+    busy=true;status('正在读取…');
     try{
       const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
       const base=pathFor(item),query=item.versionId?'?versionId='+encodeURIComponent(item.versionId):'';
