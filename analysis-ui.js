@@ -7,7 +7,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
   function pause(token){return new Promise(resolve=>{const timer=setTimeout(()=>{waiting=null;resolve(token===generation);},2500);waiting={timer,resolve};});}
   function post(base,versionId){
     const key=base+':'+(versionId||'preparing');let job=pending.get(key);
-    if(!job){job=api(base,{method:'POST',body:JSON.stringify(versionId?{versionId}:{}),...(globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(versionId?75000:12000)}:{})});pending.set(key,job);job.finally(()=>{if(pending.get(key)===job)pending.delete(key);}).catch(()=>{});}
+    if(!job){job=api(base,{method:'POST',body:JSON.stringify(versionId?{versionId}:{}),...(globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{})});pending.set(key,job);job.finally(()=>{if(pending.get(key)===job)pending.delete(key);}).catch(()=>{});}
     return job;
   }
   function status(message,retry=false){$('#analysis-status').textContent=message;$('#analysis-status').hidden=!message;$('#analysis-retry').hidden=!retry;}
@@ -26,22 +26,24 @@ export function createAnalysisUi({api,$,esc,enabled}){
   async function run(item,token){
     busy=true;status('正在分析…');
     try{
-      const config=await api('/ai/status');if(token!==generation)return;
+      const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
+      const config=await read('/ai/status');if(token!==generation)return;
       if(!config.configured){status('请先在主机连接 DeepSeek');return;}
       const base=pathFor(item),query=item.versionId?'?versionId='+encodeURIComponent(item.versionId):'';
-      let data=await api(base+query),prepared=false,polls=0;const deadline=Date.now()+120000;
+      let data=await read(base+query),prepared=false,polls=0,submitted=false;const deadline=Date.now()+120000;
       while(token===generation){
         if(data.status==='ready'&&data.result){render(data);return;}
-        if(!['missing','preparing'].includes(data.status))throw new Error('暂未完成，请稍后重试');
-        if(data.status==='missing'&&(item.versionId||data.versionId)){
-          status('正在分析…');data=await post(base,item.versionId||data.versionId);if(data.status==='missing')throw new Error('暂未完成，请稍后重试');continue;
+        if(!['missing','preparing','running','error'].includes(data.status))throw new Error('暂未完成，请稍后重试');
+        if(['missing','error'].includes(data.status)&&(item.versionId||data.versionId)){
+          if(submitted)throw new Error(data.error||'暂未确认分析请求，请重试');
+          submitted=true;status('正在分析…');try{data=await post(base,item.versionId||data.versionId);}catch(error){if(error.status&&error.status<500)throw error;data={status:'running'};}continue;
         }
-        status('正在准备文章…');
+        status(data.status==='running'?'正在分析…':'正在准备文章…');
         if(data.status==='missing'&&!prepared){prepared=true;data=await post(base);continue;}
-        if(polls>=48||Date.now()>=deadline)throw new Error('文章还在准备，请稍后重试');
+        if(polls>=48||Date.now()>=deadline)throw new Error(data.status==='running'?'分析仍在继续，可稍后查看':'文章还在准备，请稍后重试');
         if(!await pause(token)||token!==generation)return;
         if(Date.now()>=deadline)throw new Error('文章还在准备，请稍后重试');
-        polls++;data=await api(base+query);
+        polls++;try{data=await read(base+query);}catch(error){if(error.status&&error.status<500)throw error;status('正在重新连接…');}
       }
     }catch(error){if(token===generation)status(error.status===409?'暂时无法取得正文，请稍后重试':error.status===503?'请先在主机连接 DeepSeek':['TimeoutError','AbortError'].includes(error.name)?'请求用时较长，请稍后重试':error.message||'分析暂不可用',error.status!==503);}
     finally{if(token===generation)busy=false;}

@@ -3,6 +3,9 @@
   const nativeFetch=window.fetch.bind(window),configUrl=new URL('https://raw.githubusercontent.com/h296025733-sys/orlet-web/main/backend.json'),known=new Set();
   let base='',flight=null,changedAt=0;
   function origin(value){const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||u.pathname!=='/'||u.search||u.hash)throw Error('连接暂时不可用，请稍后重试');return u.origin;}
+  // The build embeds one public starting address. Discovery refreshes in
+  // parallel, so a slow GitHub configuration request cannot block all content.
+  try{const initial=document.currentScript?.dataset?.backend;if(initial){base=origin(initial);known.add(base);}}catch{}
   function path(value){if(typeof value!=='string')return'';if(value.startsWith('/api/')||value==='/api')return value;try{const u=new URL(value);return known.has(u.origin)&&u.pathname.startsWith('/api/')?u.pathname+u.search:'';}catch{return'';}}
   async function refresh(force=false){
     if(flight)return flight;if(!force&&base&&Date.now()-changedAt<30000)return base;

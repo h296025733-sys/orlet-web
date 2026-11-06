@@ -608,7 +608,8 @@ function renderReader(error=''){
     const hasBody=!!documentContentHtml(document?.content),waiting=documentWaiting(document),failed=!!documentReaderSession.error||document?.status==='error'||(!hasBody&&!waiting&&!!document);
     renderDocumentContent(document?.content);
     $('#reader-content').setAttribute?.('aria-busy',String(!hasBody&&waiting));
-    const message=documentReaderSession.error||(documentReaderSession.pollExpired&&!hasBody?'文章仍在准备，可刷新查看':failed?'正文暂未取得，请重试':hasBody?(complete?'':'正文暂未完整'):'正在准备正文…');
+    const connectionWaiting=!hasBody&&['network_error','timeout','closed'].includes(document?.failureCode);
+    const message=documentReaderSession.error||(connectionWaiting?'原文连接暂不可用，将自动重试':documentReaderSession.pollExpired&&!hasBody?'文章仍在准备，可刷新查看':failed?'正文暂未取得，请重试':hasBody?(complete?'':'正文暂未完整'):'正在准备正文…');
     $('#reader-status').textContent=message;$('#reader-status').hidden=!message;$('#reader-status').classList.toggle('is-error',failed);
     $('#reader-retry-wrap').hidden=!documentReaderSession.pollExpired&&!failed&&(waiting||!document||!['partial','error'].includes(document.status));
     $('#reader-retry').textContent=documentReaderSession.pollExpired?'刷新':'重试';
