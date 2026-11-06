@@ -23,7 +23,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
     $('#analysis-coverage').textContent=labels.join(' · ');$('#analysis-coverage').hidden=!labels.length;
     status('');
   }
-  async function run(item,token){
+  async function run(item,token,prepareAgain=false){
     busy=true;status('正在分析…');
     try{
       const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
@@ -33,6 +33,10 @@ export function createAnalysisUi({api,$,esc,enabled}){
       let data=await read(base+query),prepared=false,polls=0,submitted=false;const deadline=Date.now()+120000;
       while(token===generation){
         if(data.status==='ready'&&data.result){render(data);return;}
+        if(data.status==='body_unavailable'){
+          if(prepareAgain&&!prepared){prepared=true;data=await post(base);continue;}
+          throw new Error(data.error||'原文暂未取得，请稍后重试');
+        }
         if(!['missing','preparing','running','error'].includes(data.status))throw new Error('暂未完成，请稍后重试');
         if(['missing','error'].includes(data.status)&&(item.versionId||data.versionId)){
           if(submitted)throw new Error(data.error||'暂未确认分析请求，请重试');
@@ -52,6 +56,6 @@ export function createAnalysisUi({api,$,esc,enabled}){
     if(!enabled()||!item)return;target={...item};const token=invalidate();$('#analysis-title').textContent=item.title||'文章分析';$('#analysis-result').innerHTML='';$('#analysis-coverage').hidden=true;$('#analysis-dialog').showModal();await run(target,token);
   }
   $('#analysis-close').addEventListener('click',close);$('#analysis-dialog').addEventListener('cancel',event=>{event.preventDefault();close();});
-  $('#analysis-retry').addEventListener('click',()=>{if(target&&!busy)void run(target,invalidate());});
+  $('#analysis-retry').addEventListener('click',()=>{if(target&&!busy)void run(target,invalidate(),true);});
   return{open,close};
 }
