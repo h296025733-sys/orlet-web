@@ -490,3 +490,37 @@ main{max-width:1280px;margin:0 auto;padding:28px 24px 80px 292px}
   .analysis-dialog{bottom:var(--visual-bottom,0px);max-height:calc(var(--visual-height,100dvh) - 12px);box-sizing:border-box;overscroll-behavior:contain}.analysis-dialog .dialog-title{position:sticky;top:-24px;background:#fff;z-index:1;padding:8px 0}
   .quote-save{bottom:calc(var(--visual-bottom,0px) + max(20px,env(safe-area-inset-bottom)));touch-action:manipulation;-webkit-user-select:none;user-select:none;max-width:calc(100vw - 32px)}.reader-content{scroll-padding-bottom:90px}
 }
+
+/* 2026-11-09 移动端紧凑化（≤700px）：只收紧手机排版，桌面规则保持不变 */
+@media (max-width:700px){
+  main{padding:14px 12px 46px}
+  .page-title h1{font-size:21px}
+  .period-tabs{gap:2px;padding:3px}
+  .period-tab{min-height:30px;padding:5px 11px;font-size:12px}
+  .feed-group+.feed-group{margin-top:16px}
+  .feed-meta{padding-bottom:7px;font-size:10px}
+  .article{padding:13px 14px 11px;border-radius:12px;min-width:0;max-width:100%}
+  .article.wechat-card{padding:13px 14px 11px;border-radius:12px}
+  .article h2{margin:9px 0 7px;font-size:16px;line-height:1.45}
+  .wx-title{margin:9px 0 0;font-size:15.5px;line-height:1.5}
+  .wx-head{gap:9px}
+  .wx-avatar{width:32px;height:32px;flex-basis:32px;font-size:13px}
+  .wx-name{font-size:12px}
+  .wx-time{font-size:10px}
+  .article-summary,.article-excerpt{font-size:13px;line-height:1.7;max-height:112px;-webkit-line-clamp:4}
+  .article-actions{gap:13px;margin-top:11px;padding-top:9px}
+  .article-actions button,.article-actions a{font-size:11px;gap:4px}
+  .wx-actions{gap:9px}
+  .wx-actions button{font-size:11px}
+  .workspace-search{min-width:0}
+}
+
+/* 2026-11-09 移动端防溢出：手机单列、搜索独占一行，桌面不受影响 */
+@media (max-width:700px){
+  html,body{max-width:100%;overflow-x:hidden}
+  main{width:100%;max-width:100%}
+  .topbar{height:auto;flex-wrap:wrap;row-gap:8px;padding:8px 12px}
+  .workspace-search{order:9;flex:1 0 100%;width:100%;max-width:none;min-width:0}
+  .period-tabs{width:100%}
+  .platform-nav{width:100%}
+}
