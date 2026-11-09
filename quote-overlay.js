@@ -186,7 +186,13 @@
       const original = backend.request;
       backend.request = async function patchedRequest(...args) {
         const value = await original.apply(this, args);
-        try { absorb(value); } catch {}
+        try {
+          const target = String(args[0] || '');
+          if (/\/document(\?|$)/.test(target) && value && typeof value.clone === 'function') {
+            documentUrl = target;
+            value.clone().json().then(absorb).catch(() => {});
+          }
+        } catch {}
         return value;
       };
       backend.__quoteOverlay = true;
