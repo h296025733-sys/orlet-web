@@ -1,0 +1,17 @@
+/* Saved quote (划线收藏) underline. The reader wraps the saved range in
+   <mark class="orlet-quote-mark">, and this file draws a green line under it
+   instead of a background highlight. Kept in a real stylesheet because the
+   local server sets style-src 'self'. */
+mark.orlet-quote-mark {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  text-decoration-line: underline;
+  text-decoration-color: #5fae74;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}

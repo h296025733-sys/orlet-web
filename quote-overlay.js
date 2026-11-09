@@ -14,14 +14,18 @@
   const MARK = 'orlet-quote-mark';
   const REFRESH_MS = 4000;
 
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);color:inherit;
-  padding:0;border-radius:1px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
-@media (prefers-color-scheme:dark){mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#3f6b4c 58%)}}
-`;
-  document.head.appendChild(style);
+  // The styles live in quote-overlay.css: the local server sets style-src 'self',
+  // so an injected <style> would be blocked there.
+  function ensureStylesheet() {
+    if (document.querySelector('link[data-quote-overlay-style]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = new URL('quote-overlay.css', import.meta.url).href;
+    link.dataset.quoteOverlayStyle = '1';
+    document.head.appendChild(link);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureStylesheet, { once: true });
+  else ensureStylesheet();
 
   let quotes = [];
   let quotesAt = 0;
