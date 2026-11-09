@@ -33,6 +33,7 @@
   let applying = false;
   let timer = null;
   let documentUrl = null;
+  let lastArticleId = null;
 
   function backendBase() {
     try {
@@ -156,6 +157,7 @@
   function absorb(payload) {
     if (!payload || !Array.isArray(payload.quoteRanges)) return;
     absorbed = true;
+    if (Number.isFinite(Number(payload.articleId))) lastArticleId = Number(payload.articleId);
     quotes = payload.quoteRanges
       .filter(anchor => anchor?.start?.blockId && anchor?.end?.blockId)
       .map(anchor => ({ anchor }));
@@ -172,7 +174,7 @@
         const result = originalFetch.apply(this, arguments);
         try {
           const url = typeof input === 'string' ? input : input?.url || '';
-          if (/\/api\/articles\/\d+\/document(\?|$)/.test(url)) { documentUrl = url; result.then(response => {
+          if (/\/api\/(articles\/\d+|documents\/[a-f0-9-]{36})\/document(\?|$)/.test(url)) { documentUrl = url; result.then(response => {
             response.clone().json().then(absorb).catch(() => {});
           }, () => {}); }
         } catch {}
@@ -194,11 +196,12 @@
   // A new or cancelled quote changes the document's ranges; re-read the same
   // document endpoint instead of guessing.
   async function refreshFromDocument() {
-    if (!documentUrl) return;
+    const target = documentUrl || (lastArticleId ? '/api/articles/' + lastArticleId + '/document' : null);
+    if (!target) return;
     try {
-      if (globalThis.orletBackend?.request) absorb(await globalThis.orletBackend.request(documentUrl));
+      if (globalThis.orletBackend?.request) absorb(await globalThis.orletBackend.request(target));
       else {
-        const response = await fetch(documentUrl, { headers: { Accept: 'application/json' } });
+        const response = await fetch(target, { headers: { Accept: 'application/json' } });
         if (response.ok) absorb(await response.json());
       }
     } catch {}
@@ -246,12 +249,12 @@
     document.addEventListener('click', event => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
-      if (target.closest('[data-quote-save],[data-quote-delete]')) { setTimeout(() => refreshFromDocument(), 700); return; }
+      if (target.closest('#quote-save,[data-quote-save],[data-quote-delete],[data-library-remove]')) { setTimeout(() => refreshFromDocument(), 700); return; }
       if (target.closest('#library-list,#reader-content,#articles')) setTimeout(() => refreshFromDocument(), 1200);
     }, true);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
-  globalThis.orletQuoteOverlay = { refresh: () => refresh({ force: true }) };
+  globalThis.orletQuoteOverlay = { refresh: () => refresh({ force: true }), state: () => ({ absorbed, quotes: quotes.length, documentUrl, lastArticleId, marks: document.querySelectorAll('mark.' + MARK).length }) };
 })();
