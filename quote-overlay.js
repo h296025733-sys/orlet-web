@@ -25,8 +25,10 @@ mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);colo
 
   let quotes = [];
   let quotesAt = 0;
+  let absorbed = false;
   let applying = false;
   let timer = null;
+  let documentUrl = null;
 
   function backendBase() {
     try {
@@ -42,7 +44,10 @@ mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);colo
     return response.json();
   }
 
+  // Fallback for an older backend without quoteRanges: read the saved quotes
+  // directly. Only block positions are used, never the quoted text.
   async function loadQuotes() {
+    if (absorbed) return;
     try {
       const collected = [];
       for (let offset = 0; offset < 500; offset += 100) {
@@ -53,7 +58,7 @@ mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);colo
         if (!Number.isFinite(total) || collected.length >= total || !items.length) break;
       }
       quotes = collected
-        .map(item => ({ id: item.id, anchor: item.anchor || item.range, text: item.text || item.selectedText || '' }))
+        .map(item => ({ id: item.id, anchor: item.anchor || item.range }))
         .filter(item => item.anchor?.start?.blockId && item.anchor?.end?.blockId);
       quotesAt = Date.now();
     } catch {}
@@ -144,7 +149,59 @@ mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);colo
     }
   });
 
+  function absorb(payload) {
+    if (!payload || !Array.isArray(payload.quoteRanges)) return;
+    absorbed = true;
+    quotes = payload.quoteRanges
+      .filter(anchor => anchor?.start?.blockId && anchor?.end?.blockId)
+      .map(anchor => ({ anchor }));
+    quotesAt = Date.now();
+    schedule(0);
+  }
+
+  // The document response already carries the quote ranges for its own document,
+  // so the reader needs no extra request (and works from the public frontend too).
+  function watchDocumentResponses() {
+    const originalFetch = globalThis.fetch;
+    if (typeof originalFetch === 'function') {
+      globalThis.fetch = function patchedFetch(input, init) {
+        const result = originalFetch.apply(this, arguments);
+        try {
+          const url = typeof input === 'string' ? input : input?.url || '';
+          if (/\/api\/articles\/\d+\/document(\?|$)/.test(url)) { documentUrl = url; result.then(response => {
+            response.clone().json().then(absorb).catch(() => {});
+          }, () => {}); }
+        } catch {}
+        return result;
+      };
+    }
+    const backend = globalThis.orletBackend;
+    if (backend && typeof backend.request === 'function' && !backend.__quoteOverlay) {
+      const original = backend.request;
+      backend.request = async function patchedRequest(...args) {
+        const value = await original.apply(this, args);
+        try { absorb(value); } catch {}
+        return value;
+      };
+      backend.__quoteOverlay = true;
+    }
+  }
+
+  // A new or cancelled quote changes the document's ranges; re-read the same
+  // document endpoint instead of guessing.
+  async function refreshFromDocument() {
+    if (!documentUrl) return;
+    try {
+      if (globalThis.orletBackend?.request) absorb(await globalThis.orletBackend.request(documentUrl));
+      else {
+        const response = await fetch(documentUrl, { headers: { Accept: 'application/json' } });
+        if (response.ok) absorb(await response.json());
+      }
+    } catch {}
+  }
+
   function start() {
+    watchDocumentResponses();
     observer.observe(document.body, { childList: true, subtree: true });
     refresh({ force: true });
     setInterval(() => {
@@ -154,8 +211,8 @@ mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);colo
     document.addEventListener('click', event => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
-      if (target.closest('[data-quote-save],[data-quote-delete]')) { setTimeout(() => refresh({ force: true }), 600); return; }
-      if (target.closest('#library-list,#reader-content,#articles')) setTimeout(() => refresh({ force: true }), 900);
+      if (target.closest('[data-quote-save],[data-quote-delete]')) { setTimeout(() => refreshFromDocument(), 700); return; }
+      if (target.closest('#library-list,#reader-content,#articles')) setTimeout(() => refreshFromDocument(), 1200);
     }, true);
   }
 
