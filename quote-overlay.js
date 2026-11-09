@@ -200,8 +200,39 @@ mark.${MARK}{background:linear-gradient(180deg,transparent 58%,#bfe3c8 58%);colo
     } catch {}
   }
 
+  // If the shared page landed on an offline banner (tunnel or backend restart),
+  // probe the backend and reload once it answers again. This keeps a phone that
+  // was open during a restart from staying stuck on "服务离线".
+  function watchConnection() {
+    let lastReload = 0;
+    const offline = () => {
+      const status = document.getElementById('refresh-status')?.textContent || '';
+      const title = document.getElementById('connection-title')?.textContent || '';
+      return /服务离线|暂时离线/.test(status + title);
+    };
+    const probe = async () => {
+      if (document.hidden || !offline()) return;
+      if (Date.now() - lastReload < 30000) return;
+      try {
+        if (globalThis.orletBackend?.refresh) await globalThis.orletBackend.refresh();
+        if (globalThis.orletBackend?.request) await globalThis.orletBackend.request('/api/health');
+        else {
+          const response = await fetch('/api/health', { headers: { Accept: 'application/json' } });
+          if (!response.ok) return;
+        }
+        lastReload = Date.now();
+        location.reload();
+      } catch {}
+    };
+    setInterval(probe, 15000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) setTimeout(probe, 1200);
+    });
+  }
+
   function start() {
     watchDocumentResponses();
+    watchConnection();
     observer.observe(document.body, { childList: true, subtree: true });
     refresh({ force: true });
     setInterval(() => {
