@@ -1,12 +1,12 @@
-import {interpretXhsTime} from './xhs-time.js?v=35dca5b261d0';
-import {createLibraryUi} from './library-ui.js?v=257a8196ebff';
-import {createAnalysisUi} from './analysis-ui.js?v=543aa9eaf0b7';
+import {interpretXhsTime} from './xhs-time.js';
+import {createLibraryUi} from './library-ui.js';
+import {createAnalysisUi} from './analysis-ui.js';
 const $=s=>document.querySelector(s);
 const platforms={x:'X',xiaohongshu:'小红书',wechat:'微信公众号'};
 const visiblePlatforms=new Set(['x','xiaohongshu','wechat']);
 const icons={x:'𝕏',xiaohongshu:'红',wechat:'微'};
 const classes={x:'x',xiaohongshu:'red',wechat:'green'};
-const state={view:'feed',platform:'',source:'',period:'today',q:'',offset:0,nextOffset:0,snapshot:null,total:0,hasMore:false,totalKnown:true,periodDay:null,articles:[],sources:[],summary:null,watch:null,readerId:null,reader:null,readerDocument:null,pendingArticles:new Map(),loaded:false};
+const state={view:'feed',platform:'',source:'',period:'today',tab:'today',range:null,unreadOnly:false,q:'',offset:0,nextOffset:0,snapshot:null,total:0,hasMore:false,totalKnown:true,periodDay:null,articles:[],sources:[],summary:null,watch:null,readerId:null,reader:null,readerDocument:null,pendingArticles:new Map(),loaded:false};
 const titles={feed:'全部动态',unread:'未读',starred:'收藏',sources:'订阅管理',activity:'最近记录'};
 const periodTitles={today:'今天',history:'历史'};
 const briefTimeFormat=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'});
@@ -59,7 +59,9 @@ function displayLabel(article){return article?.platform_time_label||article?.tim
 function resolvedRelativeTime(article){return articleTime(article);}
 function articlePeriod(article){const day=beijingDay(displayInstant(article));return !day?'unknown':day===beijingDay(Date.now())?'today':day===beijingDay(Date.now()-86400000)?'yesterday':'history';}
 function normalizePeriod(period){return ['history','yesterday','unknown'].includes(period)?'history':'today';}
-function matchesPeriod(article){return normalizePeriod(state.period)==='today'?articlePeriod(article)==='today':articlePeriod(article)!=='today';}
+function normalizeTab(tab){return ['range','unread'].includes(tab)?tab:'today';}
+function activeRange(){const value=state.range;return value&&/^\d{4}-\d{2}-\d{2}$/.test(value.from||'')&&/^\d{4}-\d{2}-\d{2}$/.test(value.to||'')?value:null;}
+function matchesPeriod(article){return normalizeTab(state.tab)==='range'?true:articlePeriod(article)==='today';}
 function historicalSample(article){if(typeof article?.is_historical_sample==='boolean')return article.is_historical_sample;const timestamp=Date.parse(article?.published_at||article?.ingested_at||article?.discovered_at);return Number.isFinite(timestamp)&&timestamp<Date.parse(state.summary?.startedAt||startedAt);}
 function articleTime(article){const instant=displayInstant(article),day=beijingDay(instant);if(!day)return '';const precision=xhsTime(article)?.precision||article?.time_info?.platformDisplayTime?.precision;if(precision==='day'||/_date$/.test(article?.platform_time_basis||''))return day.replaceAll('-','/');const clock=clockFormat.format(new Date(instant));return day===beijingDay(Date.now())?'今天 '+clock:day.replaceAll('-','/')+' '+clock;}
 function articleTimeTitle(article){return article?.platform==='wechat'&&!article.published_at&&!article.platform_time_at?'首次发现时间（无源发布时间）':'';}
@@ -280,10 +282,10 @@ function cacheArticleMetadata(article){
   }
 }
 function compareArticles(a,b){return (Date.parse(displayInstant(b)||b.ingested_at||b.discovered_at)||0)-(Date.parse(displayInstant(a)||a.ingested_at||a.discovered_at)||0)||Number(b.id)-Number(a.id);}
-function matchesScope(a,scope){return visiblePlatforms.has(a.platform)&&(!scope.platform||a.platform===scope.platform)&&(!scope.source||a.source_id===scope.source)&&(normalizePeriod(scope.period)==='today'?articlePeriod(a)==='today':articlePeriod(a)!=='today')&&(scope.view!=='unread'||!a.is_read)&&(scope.view!=='starred'||!!a.starred)&&(!scope.q||[a.title,a.summary,a.author].join(' ').toLocaleLowerCase().includes(scope.q.toLocaleLowerCase()));}
+function matchesScope(a,scope){return visiblePlatforms.has(a.platform)&&(!scope.platform||a.platform===scope.platform)&&(!scope.source||a.source_id===scope.source)&&(normalizeTab(scope.tab)==='today'?articlePeriod(a)==='today':true)&&(!scope.unreadOnly||!a.is_read)&&(scope.view!=='unread'||!a.is_read)&&(scope.view!=='starred'||!!a.starred)&&(!scope.q||[a.title,a.summary,a.author].join(' ').toLocaleLowerCase().includes(scope.q.toLocaleLowerCase()));}
 function matchingArticle(a){return matchesScope(a,state);}
-function feedScope(){return{view:state.view,platform:state.platform,source:state.source,period:state.period,q:state.q};}
-function feedViewKey(scope=state){return JSON.stringify([scope.view,scope.platform,scope.source,scope.period,scope.q,beijingDay(Date.now())]);}
+function feedScope(){return{view:state.view,platform:state.platform,source:state.source,tab:normalizeTab(state.tab),range:state.range,unreadOnly:normalizeTab(state.tab)==='unread',q:state.q};}
+function feedViewKey(scope=state){return JSON.stringify([scope.view,scope.platform,scope.source,normalizeTab(scope.tab),scope.range,!!scope.unreadOnly,scope.q,beijingDay(Date.now())]);}
 function copyFeedPage(cache){return cache?{...cache,items:cache.items.slice(),seen:new Set(cache.seen)}:null;}
 function rememberFeedView(){
   if(!state.loaded||['sources','activity'].includes(state.view)||state.articles.length>200)return;
@@ -297,11 +299,17 @@ function restoreFeedView(){
   feedViewCache.delete(key);feedViewCache.set(key,view);setFeedLoading(false);renderFeedState();renderPeriodCounts();return true;
 }
 function setFeedLoading(loading){$('#articles').classList.toggle('is-loading',loading&&!state.articles.length);$('#articles').setAttribute?.('aria-busy',String(loading));if(loading)$('#feed-empty').hidden=true;renderBulkReadControl();}
-function renderBulkReadControl(){const button=$('#read-all');button.disabled=bulkReadBusy||!scopedReadSupported||!state.loaded;button.textContent=bulkReadBusy?'正在标记…':state.q?'搜索结果标为已读':'当前内容标为已读';button.title='将当前筛选下的文章标为已读';}
+function renderBulkReadControl(){const button=$('#read-all');button.disabled=bulkReadBusy||!scopedReadSupported||!state.loaded;button.textContent=bulkReadBusy?'正在标记…':state.q?'搜索结果标为已读':state.unreadOnly&&normalizeTab(state.tab)==='range'?'本范围未读标为已读':'本区域标为已读';button.title='把当前筛选（今天/日期范围/未读）下的文章标为已读';}
 function setArticleBusy(id,busy){const node=$(`#articles [data-id="${id}"]`);node?.setAttribute?.('aria-busy',String(busy));for(const button of node?.querySelectorAll?.('[data-star],[data-read]')||[])button.disabled=busy;}
 function cancelFeedLoad(){articleLoadController?.abort();articleLoadController=null;clearTimeout(articleLoadTimeout);clearTimeout(prefetchTimer);prefetchController?.abort();prefetchController=null;}
 function recordFeedTiming(start,kind){if(typeof start!=='number'||!globalThis.performance?.measure)return;try{const name='orlet.feed.'+state.period+'.'+kind,duration=performance.now()-start;performance.clearMeasures(name);performance.measure(name,{start,duration});if(new URLSearchParams(globalThis.location?.search||'').get('_perf')==='1')console.info('Orlet performance '+JSON.stringify({period:state.period,mode:kind,ms:Math.round(duration*10)/10,cards:state.articles.length}));}catch{}}
-function groupedArticles(){const groups=new Map();for(const article of state.articles){const period=articlePeriod(article)==='today'?'today':'history';if(!groups.has(period))groups.set(period,{period,title:periodTitles[period],items:[]});groups.get(period).items.push(article);}return ['today','history'].flatMap(period=>groups.has(period)?[groups.get(period)]:[]);}
+function groupedArticles(){
+  const tab=normalizeTab(state.tab);
+  if(tab!=='today'){
+    const title=tab==='unread'?'未读':state.range?state.range.from.slice(5)+' ~ '+state.range.to.slice(5):'筛选结果';
+    return state.articles.length?[{period:'filtered',title,items:state.articles.slice()}]:[];
+  }
+  const groups=new Map();for(const article of state.articles){const period=articlePeriod(article)==='today'?'today':'history';if(!groups.has(period))groups.set(period,{period,title:periodTitles[period],items:[]});groups.get(period).items.push(article);}return ['today','history'].flatMap(period=>groups.has(period)?[groups.get(period)]:[]);}
 function groupHtml(group){return `<section class="feed-group" data-period-group="${group.period}"><div class="group-heading"${group.title?'':' hidden'}><h2>${esc(group.title)}</h2><span>${group.items.length} 条</span></div><div class="group-articles">${group.items.map(articleHtml).join('')}</div></section>`;}
 function reconcileChildren(parent,nodes){let current=parent.firstElementChild;for(const node of nodes){if(node===current)current=current.nextElementSibling;else parent.insertBefore(node,current);}while(current){const next=current.nextElementSibling;current.remove();current=next;}}
 function renderArticles(){
@@ -337,9 +345,9 @@ function renderFeedState(){
   if(periodPageCache?.complete&&state.loaded)state.total=periodPageCache.items.filter(matchingArticle).length;
   $('#feed-count').textContent='';$('#load-more').hidden=!state.hasMore;
   $('#feed-empty').hidden=state.articles.length>0;
-  $('#empty-title').textContent=state.hasMore?'继续查看已保存的内容':state.q?'没有匹配的内容':state.view==='starred'?'喜欢的内容，留在这里':state.view==='unread'?'未读已清空':state.period==='today'?'今天还没有新内容':'这里还没有历史内容';
+  $('#empty-title').textContent=state.hasMore?'继续查看已保存的内容':state.q?'没有匹配的内容':state.view==='starred'?'喜欢的内容，留在这里':state.view==='unread'?'未读已清空':state.unreadOnly?'未读已清空':normalizeTab(state.tab)==='today'?'今天还没有新内容':'这个范围还没有内容';
   $('#empty-description').textContent=state.hasMore?'点击加载更多，继续查找这一分类。':state.q?'换一个关键词试试。':state.view==='starred'?'点击文章下方的收藏。':state.view==='unread'?'有新的内容时会出现在这里。':state.sources.some(s=>visiblePlatforms.has(s.platform))?'可以切换日期或作者查看已保存的内容。':'添加一位作者，开始整理你的阅读。';
-  $('#search-history').hidden=!(state.q&&state.period==='today'&&!state.hasMore&&!state.articles.length);
+  $('#search-history').hidden=!(state.q&&normalizeTab(state.tab)==='today'&&!state.unreadOnly&&!state.hasMore&&!state.articles.length);
   renderArticles();renderUpdateNotice();renderBulkReadControl();
 }
 function renderAuthorNavigation(){
@@ -356,7 +364,10 @@ function updateNavigation(){
   document.body?.classList.toggle('monitor-mode',state.view==='sources');
   document.body?.classList.toggle('reading-mode',state.readerId!==null);
   document.querySelectorAll('[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter===state.platform));
-  document.querySelectorAll('[data-period]').forEach(el=>{el.classList.toggle('active',el.dataset.period===state.period);el.setAttribute?.('aria-pressed',String(el.dataset.period===state.period));});
+  document.querySelectorAll('[data-tab]').forEach(el=>{const active=el.dataset.tab===normalizeTab(state.tab);el.classList.toggle('active',active);el.setAttribute?.('aria-pressed',String(active));});
+  if($('#unread-chip')){const chip=$('#unread-chip');chip.classList.toggle('active',normalizeTab(state.tab)==='unread');chip.setAttribute('aria-pressed',String(normalizeTab(state.tab)==='unread'));}
+  if($('#range-label'))$('#range-label').textContent=state.range?state.range.from.slice(5)+' ~ '+state.range.to.slice(5):'';
+  if($('#range-panel'))$('#range-panel').hidden=normalizeTab(state.tab)!=='range';
   const source=state.sources.find(s=>s.id===state.source),title=source?.name||(state.platform?platforms[state.platform]:titles[state.view]);
   $('#breadcrumb-title').textContent=title;$('#page-heading').textContent=state.view==='sources'?'我的监控':title;
   $('#page-subtitle').textContent=source?(platforms[source.platform]||''):state.view==='unread'?'留给下一次阅读':state.view==='starred'?'值得再读一次':state.view==='sources'?`${state.sources.filter(s=>visiblePlatforms.has(s.platform)).length} 位作者`:state.view==='activity'?'采集与连接状态':new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Shanghai'});
@@ -371,7 +382,7 @@ function updateNavigation(){
 }
 // The old backend's history excludes yesterday and unknown times. Both visible
 // categories instead classify the same unfiltered local snapshot in Beijing time.
-function articleParams(offset=0,snapshot=null,scope=state){const params=new URLSearchParams({offset:String(offset),readingPeriod:normalizePeriod(scope.period)});if(snapshot!==null)params.set('snapshot',String(snapshot));if(scope.platform)params.set('platform',scope.platform);if(scope.source)params.set('source',scope.source);if(scope.q)params.set('q',scope.q);return params;}
+function articleParams(offset=0,snapshot=null,scope=state){const params=new URLSearchParams({offset:String(offset)});const tab=normalizeTab(scope.tab),range=tab==='range'?scope.range:null;if(tab==='range'&&range&&range.from&&range.to){params.set('from',range.from);params.set('to',range.to);}else if(tab==='today')params.set('readingPeriod','today');if(tab==='unread'||scope.unreadOnly)params.set('unread','1');if(snapshot!==null)params.set('snapshot',String(snapshot));if(scope.platform)params.set('platform',scope.platform);if(scope.source)params.set('source',scope.source);if(scope.q)params.set('q',scope.q);return params;}
 async function periodArticlesPage(offset,snapshot,request,restart=false,signal=null){
   const key=feedViewKey();
   if(restart||!periodPageCache||periodPageCache.key!==key||periodPageCache.snapshot!==snapshot)periodPageCache={key,snapshot,items:[],seen:new Set(),next:0,complete:false,counts:{today:0,history:0}};
@@ -420,8 +431,8 @@ async function refreshArticles(append=false,{preferCache=false}={}){
   return true;
 }
 function scheduleFeedPrefetch(){
-  clearTimeout(prefetchTimer);if(!periodPageCache?.serverFiltered||['sources','activity'].includes(state.view))return;
-  const scope={...feedScope(),period:state.period==='today'?'history':'today'},key=feedViewKey(scope),cached=feedViewCache.get(key);
+  // Every tab is server-filtered now, so the old opposite-period prefetch no longer applies.
+  clearTimeout(prefetchTimer);return;
   if(cached&&Date.now()-cached.fetchedAt<=FEED_CACHE_TTL)return;
   const origin=feedViewKey();
   prefetchTimer=setTimeout(async()=>{
@@ -510,7 +521,7 @@ function receiveUpdates(items){
 async function refreshLocalMetadata(){
   if(metadataBusy||!state.loaded||state.readerId!==null||libraryView()||['sources','activity'].includes(state.view)||applyingUpdates)return;
   if(state.periodDay!==beijingDay(Date.now())){const anchor=scrollAnchor();await refreshArticles();restoreAnchor(anchor);return;}
-  metadataBusy=true;const request=articleRequest,viewKey=JSON.stringify([state.view,state.platform,state.source,state.period,state.q]);
+  metadataBusy=true;const request=articleRequest,viewKey=JSON.stringify([state.view,state.platform,state.source,normalizeTab(state.tab),state.range,!!state.unreadOnly,state.q]);
   try{const data=await api('/articles?'+articleParams(0));if(request!==articleRequest||viewKey!==JSON.stringify([state.view,state.platform,state.source,state.period,state.q]))return;
     // A latest-page read also provides a conservative fallback when /updates is
     // not available yet. It never replaces the current pagination snapshot.
@@ -575,7 +586,7 @@ function renderConnectionStatus(){
 function renderPeriodCounts(){
   const globalFeed=state.view==='feed'&&!state.platform&&!state.source&&!state.q,summary=state.summary||{},periods=summary.periods||{};
   const today=Number(periods.today??summary.today)||0,history=Number.isFinite(Number(summary.articles))?Math.max(0,Number(summary.articles)-today):['yesterday','history','unknown'].reduce((n,key)=>n+(Number(periods[key])||0),0);
-  const key=JSON.stringify([state.view,state.platform,state.source,state.period,state.q,beijingDay(Date.now())]);
+  const key=JSON.stringify([state.view,state.platform,state.source,normalizeTab(state.tab),state.range,!!state.unreadOnly,state.q,beijingDay(Date.now())]);
   const counts=globalFeed&&periodPageCache?.complete&&periodPageCache.key===key&&periodPageCache.seen.size===Number(summary.articles)?periodPageCache.counts:{today,history};
   for(const period of Object.keys(periodTitles)){const count=$('#period-count-'+period);if(count)count.textContent=globalFeed?(counts[period]||''):'';}
 }
@@ -769,7 +780,20 @@ async function readerAction(patch){
   finally{if(readerCurrent(generation,id)){readerActionBusy=false;renderReader();}}
 }
 async function navigate(view='feed',platform='',source='',{clearSearch=false}={}){const changed=state.view!==view||state.platform!==platform||state.source!==source||clearSearch&&!!state.q;clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();stopReader();state.readerId=null;state.reader=null;readerActionBusy=false;if(clearSearch)state.q='';state.view=view;state.platform=platform;state.source=source;state.period=normalizePeriod(state.period);state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;toggleMobileNav(false);updateNavigation();if(view==='sources')renderSources();if(!['sources','activity'].includes(view))try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}}
-async function filterPeriod(period){const next=normalizePeriod(period),changed=state.period!==next;if(!changed&&articleLoadController)return;clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();state.period=next;state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;updateNavigation();try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}}
+async function applyFeedFilter({tab=normalizeTab(state.tab),range=state.range,unreadOnly=state.unreadOnly}={}){
+  const nextTab=normalizeTab(tab),nextRange=tab==='range'?range:null,changed=state.tab!==nextTab||JSON.stringify(state.range)!==JSON.stringify(nextRange)||state.unreadOnly!==unreadOnly;
+  if(!changed&&articleLoadController)return;
+  clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();
+  state.tab=nextTab;state.range=nextRange;state.unreadOnly=nextTab==='unread';state.period=nextTab==='range'?'history':(nextTab==='unread'?'history':'today');
+  state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;
+  updateNavigation();
+  try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}
+}
+function selectTab(tab){
+  if(tab==='range'&&!activeRange()){state.tab='range';state.period='history';updateNavigation();return Promise.resolve();}
+  return applyFeedFilter({tab,range:tab==='range'?(activeRange()||state.range):null});
+}
+function toggleUnread(){return applyFeedFilter({unreadOnly:!state.unreadOnly});}
 function readerStep(direction){const index=state.articles.findIndex(a=>a.id===state.readerId),next=state.articles[index+direction];if(next)void openReader(next.id);}
 
 function installImageHandlers(container){
@@ -816,7 +840,10 @@ document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click'
 document.querySelectorAll('[data-platform]').forEach(el=>el.addEventListener('click',()=>{if(state.view==='sources'){state.monitorPlatform=el.dataset.platform;state.monitorSelected=null;updateNavigation();renderSources();}else void navigate('feed',el.dataset.platform);}));
 document.querySelectorAll('[data-workspace]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.workspace)));
 document.querySelectorAll('[data-filter]').forEach(el=>el.addEventListener('click',()=>navigate(state.view,el.dataset.filter)));
-document.querySelectorAll('[data-period]').forEach(el=>el.addEventListener('click',()=>filterPeriod(el.dataset.period)));
+document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{void selectTab(el.dataset.tab);}));
+if($('#unread-chip'))$('#unread-chip').addEventListener('click',()=>{void selectTab(normalizeTab(state.tab)==='unread'?'today':'unread');});
+if($('#range-apply'))$('#range-apply').addEventListener('click',()=>{const from=$('#range-from').value,to=$('#range-to').value;if(!from||!to){toast('请选择开始和结束日期');return;}if(from>to){toast('开始日期不能晚于结束日期');return;}void applyFeedFilter({tab:'range',range:{from,to}});});
+if($('#range-clear'))$('#range-clear').addEventListener('click',()=>{$('#range-from').value='';$('#range-to').value='';void applyFeedFilter({tab:'today',range:null});});
 document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',()=>$('#'+el.dataset.close).close()));
 function showAdd(){ $('#source-error').textContent='';$('#wechat-search-error').textContent='';applyAddPlatform(state.view==='sources'&&state.monitorPlatform?state.monitorPlatform:addPlatform);$('#add-dialog').showModal(); }
 $('#add-open').addEventListener('click',showAdd);
@@ -879,7 +906,7 @@ function syncSourceForm(){const p=$('#source-platform').value,xhs=p==='xiaohongs
 $('#source-platform').addEventListener('change',syncSourceForm);
 $('#source-form').addEventListener('submit',async event=>{event.preventDefault();$('#source-submit').disabled=true;$('#source-error').textContent='';try{const data=Object.fromEntries(new FormData(event.target));const isXhs=data.platform==='xiaohongshu';if(!String(data.url||'').trim()||(!isXhs&&!String(data.name||'').trim())){$('#source-error').textContent=isXhs?'请粘贴博主主页链接':'请填写名称和主页链接';$('#source-submit').disabled=false;return;}if(isXhs){await api('/xhs/add',{method:'POST',body:JSON.stringify({url:data.url,name:data.name})});$('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast('已添加订阅，稍后自动识别博主信息');return;}data.intervalMinutes=Number(data.intervalMinutes);await api('/sources',{method:'POST',body:JSON.stringify(data)});$('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast(state.summary?.access?.[data.platform]?.allowed===false?'订阅已保存，接入待确认':'订阅已添加');}catch(e){$('#source-error').textContent=e.message;}finally{$('#source-submit').disabled=false;}});
 $('#search').addEventListener('input',()=>{clearTimeout(searchTimer);const q=$('#search').value.trim();if(state.view==='sources'){state.monitorQ=q;state.monitorSelected=null;renderSources();return;}if(state.readerId!==null||state.view==='activity')return;if(libraryView()){libraryUi.search(q);return;}rememberFeedView();state.q=q;state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;cancelFeedLoad();articleRequest++;state.articles=state.articles.filter(matchingArticle);renderArticles();renderPeriodCounts();setFeedLoading(true);searchTimer=setTimeout(()=>refreshArticles().catch(e=>toast(e.message)),250);});
-$('#search-history').addEventListener('click',()=>filterPeriod('history'));
+$('#search-history').addEventListener('click',()=>{void selectTab('range');});
 $('#load-more').addEventListener('click',async()=>{if(loadingMore)return;loadingMore=true;$('#load-more').disabled=true;try{await refreshArticles(true);}catch(e){toast(e.message);}finally{loadingMore=false;$('#load-more').disabled=false;}});
 $('#read-all').addEventListener('click',async()=>{if(bulkReadBusy||!scopedReadSupported||!state.loaded)return;bulkReadBusy=true;renderBulkReadControl();const scope=feedScope(),key=feedViewKey(),filters=Object.fromEntries(articleParams(0,state.snapshot,scope));delete filters.offset;if(scope.view==='starred')filters.starred='true';try{
   feedCacheRevision++;const result=await api('/articles/read-all',{method:'POST',body:JSON.stringify(filters)});feedCacheRevision++;

@@ -1,0 +1,16 @@
+/* Filter row: 今天 / 日期范围 / 未读, plus the scoped mark-read button. */
+.filter-row{flex-wrap:wrap;gap:10px}
+.range-panel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.range-panel input[type="date"]{height:34px;padding:0 9px;border:1px solid #e2e7e9;border-radius:8px;background:#fff;color:#33413a;font-size:12px}
+.range-dash{color:#8b968f;font-size:12px}
+.period-tab.unread-chip.active{background:#315b49;color:#fff}
+.period-tab.unread-chip.active .period-count{background:#ffffff2e;color:#fff}
+.feed-meta{display:flex;align-items:center;gap:10px}
+.feed-meta #read-all{margin-left:auto}
+.feed-meta .timezone-label{margin:0}
+@media (max-width:700px){
+  .range-panel{width:100%}
+  .range-panel input[type="date"]{flex:1 1 42%;min-width:0}
+  .feed-meta{font-size:11px;gap:8px}
+  .feed-meta #read-all{font-size:11px}
+}

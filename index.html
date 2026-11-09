@@ -9,12 +9,13 @@
   <meta name="theme-color" content="#315b49">
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css?v=88a199b550a2">
+  <link rel="stylesheet" href="./filter-bar.css?v=c0d25129a080">
   <link rel="stylesheet" href="./reader-shell.css?v=4b68fb62e2c8">
   <script src="./backend-bridge.js?v=22b8f6c69de6"></script>
   <script type="module" src="./share-client.js?v=332512484a5d"></script>
   <link rel="stylesheet" href="./quote-overlay.css">
   <script type="module" src="./quote-overlay.js?v=e7237e765319"></script>
-<script type="module" src="./app.js?v=d4a5662ef584"></script>
+<script type="module" src="./app.js?v=5acdb07e585a"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -72,14 +73,21 @@
         <button class="primary" id="add-open"><svg class="button-icon" aria-hidden="true"><use href="#icon-plus"/></svg>添加订阅</button>
       </div>
       <section class="content-panel" id="feed-view" aria-label="内容列表">
-        <div class="panel-toolbar">
-          <div class="period-tabs" aria-label="平台页面时间">
-            <button class="period-tab active" data-period="today" aria-pressed="true">今天<span class="period-count" id="period-count-today"></span></button>
-            <button class="period-tab" data-period="history" aria-pressed="false">历史<span class="period-count" id="period-count-history"></span></button>
+        <div class="panel-toolbar filter-row">
+          <div class="period-tabs" aria-label="时间与未读筛选">
+            <button class="period-tab active" data-tab="today" aria-pressed="true">今天<span class="period-count" id="period-count-today"></span></button>
+            <button class="period-tab" data-tab="range" aria-pressed="false" id="range-tab">日期<span class="period-count" id="range-label"></span></button>
+            <button class="period-tab unread-chip" aria-pressed="false" id="unread-chip">未读<span class="period-count" id="period-count-unread"></span></button>
           </div>
-          <div class="toolbar-right"><button class="text-button" id="read-all" disabled>当前内容标为已读</button><span class="timezone-label">北京时间</span></div>
+          <div class="range-panel" id="range-panel" hidden>
+            <input type="date" id="range-from" aria-label="开始日期">
+            <span class="range-dash">至</span>
+            <input type="date" id="range-to" aria-label="结束日期">
+            <button type="button" class="primary" id="range-apply">应用</button>
+            <button type="button" class="secondary" id="range-clear">清除</button>
+          </div>
         </div>
-        <div class="feed-meta"><span id="feed-count"></span></div>
+        <div class="feed-meta"><span id="feed-count"></span><button class="text-button" id="read-all" disabled>本区域标为已读</button><span class="timezone-label">北京时间</span></div>
         <div class="updates-notice" id="updates-notice" role="status" hidden><span><svg class="button-icon" aria-hidden="true"><use href="#icon-update"/></svg><span id="updates-label"></span></span><button id="updates-apply">查看更新</button></div>
         <div id="articles" class="articles"></div>
         <div class="empty-state" id="feed-empty"><div class="empty-symbol"><svg class="nav-icon" aria-hidden="true"><use href="#icon-feed"/></svg></div><p id="empty-title">这里还没有内容</p><p class="empty-description" id="empty-description"></p><button class="text-button" id="search-history" hidden>查看历史结果 →</button></div>
