@@ -1,6 +1,6 @@
 // GitHub Pages only. Configuration contains one public API origin, no secrets.
 (()=>{
-  const nativeFetch=window.fetch.bind(window),configUrl=new URL('https://raw.githubusercontent.com/h296025733-sys/orlet-web/main/backend.json'),known=new Set();
+  const nativeFetch=window.fetch.bind(window),configUrl=new URL('./backend.json',document.currentScript.src),known=new Set();
   let base='',flight=null,changedAt=0;
   function origin(value){const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||u.pathname!=='/'||u.search||u.hash)throw Error('连接暂时不可用，请稍后重试');return u.origin;}
   // The build embeds one public starting address. Discovery refreshes in
