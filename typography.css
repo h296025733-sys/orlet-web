@@ -125,7 +125,7 @@ body {
   letter-spacing: .04em;
   color: var(--ink-subtle);
   min-height: 34px;
-  padding: 0 2px 8px;
+  padding: 8px 2px 8px;
   margin: 0;
   display: flex;
   align-items: center;
@@ -390,7 +390,7 @@ body {
   width: 100%;
   max-width: 500px;
   gap: 12px;
-  margin: 2px 0 4px;
+  margin: 2px 0 0;
   padding: 14px 16px 15px;
   border: 1px solid var(--rule-soft);
   border-radius: 14px;
