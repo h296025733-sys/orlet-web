@@ -1,0 +1,280 @@
+/* Orlet typography refinement — presentation only.
+   Loaded after style.css / reader-shell.css / filter-bar.css, so it only tunes
+   type: family, size, weight, rhythm, spacing and a few optical alignments.
+   No layout structure, no behavior. */
+
+:root {
+  --type-ui: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC",
+    "Noto Sans SC", "DengXian", "等线", "Microsoft YaHei UI", "Microsoft YaHei",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --type-reading: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC",
+    "Noto Sans SC", "DengXian", "等线", "Microsoft YaHei UI", -apple-system, "Segoe UI", sans-serif;
+  --type-num: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+
+  --ink-strong: #1c2620;
+  --ink-body: #2b3730;
+  --ink-muted: #6d7a72;
+  --ink-subtle: #98a29a;
+  --rule-soft: #e8ece8;
+}
+
+html, body, button, input, select, textarea {
+  font-family: var(--type-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis-weight: none;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.65;
+  letter-spacing: .012em;
+  color: var(--ink-body);
+}
+
+/* ── 顶栏与导航 ───────────────────────────────────────────── */
+.brand {
+  font-family: var(--type-ui);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--ink-strong);
+}
+.brand img { border-radius: 9px }
+
+.nav-item {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: .015em;
+}
+.nav-count, .nav-item .nav-count {
+  font-family: var(--type-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.workspace-search input { font-size: 13px; letter-spacing: .012em }
+.breadcrumbs { font-size: 12.5px; letter-spacing: .01em }
+
+/* ── 页面标题区 ───────────────────────────────────────────── */
+.page-title { align-items: baseline }
+.page-title h1,
+#page-heading {
+  font-size: clamp(23px, 2.1vw, 28px);
+  font-weight: 600;
+  letter-spacing: -.022em;
+  line-height: 1.3;
+  color: var(--ink-strong);
+}
+#page-subtitle,
+.page-subtitle {
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+  letter-spacing: .02em;
+}
+
+/* ── 时间 / 筛选 / 分区标题 ───────────────────────────────── */
+.period-tab {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: .015em;
+}
+.period-count {
+  font-family: var(--type-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  letter-spacing: 0;
+}
+.range-panel input[type="date"] { font-family: var(--type-num); font-size: 12.5px }
+.timezone-label { font-size: 10.5px; letter-spacing: .08em; color: var(--ink-subtle) }
+
+/* 分区标题：左右细线包住，视觉上居中，像杂志栏目 */
+.group-heading {
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 2px 16px;
+}
+.group-heading::before,
+.group-heading::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rule-soft));
+  max-width: 34%;
+}
+.group-heading::after { background: linear-gradient(270deg, transparent, var(--rule-soft)) }
+.group-heading h2 {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: var(--ink-subtle);
+  text-transform: none;
+}
+.group-heading span {
+  font-family: var(--type-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  color: var(--ink-subtle);
+}
+
+.feed-meta {
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ink-subtle);
+  min-height: 0;
+  padding: 0 2px 2px;
+}
+.feed-meta .text-button { font-size: 11.5px; letter-spacing: .02em }
+.feed-meta #read-all { margin-left: auto; opacity: .85 }
+.feed-meta #read-all:hover { opacity: 1 }
+
+/* ── 列表卡片 ─────────────────────────────────────────────── */
+.article h2,
+.article .article-title {
+  font-family: var(--type-reading);
+  font-size: clamp(17px, 1.35vw, 19px);
+  font-weight: 600;
+  letter-spacing: -.008em;
+  line-height: 1.55;
+  color: var(--ink-strong);
+}
+.wx-title {
+  font-family: var(--type-reading);
+  font-size: clamp(16.5px, 1.3vw, 18px);
+  font-weight: 600;
+  letter-spacing: -.008em;
+  line-height: 1.55;
+}
+.wx-title a { color: var(--ink-strong) }
+
+.wx-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--ink-body);
+}
+.wx-time,
+.article-time {
+  font-family: var(--type-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  letter-spacing: .01em;
+  color: var(--ink-subtle);
+}
+
+.article-summary,
+.article-excerpt {
+  font-size: 13.5px;
+  line-height: 1.9;
+  letter-spacing: .012em;
+  color: var(--ink-muted);
+}
+
+.article-actions { gap: 20px }
+.article-actions button,
+.article-actions a {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: var(--ink-muted);
+}
+.wx-actions button { font-size: 12px; letter-spacing: .02em }
+.content-state { font-size: 11px; letter-spacing: .03em }
+
+/* ── 阅读页 ───────────────────────────────────────────────── */
+#reader-title,
+.reader-title {
+  font-family: var(--type-reading);
+  font-size: clamp(26px, 2.6vw, 34px);
+  font-weight: 600;
+  letter-spacing: -.024em;
+  line-height: 1.36;
+  color: var(--ink-strong);
+}
+#reader-meta,
+.reader-meta {
+  font-family: var(--type-num);
+  font-size: 12.5px;
+  letter-spacing: .04em;
+  color: var(--ink-subtle);
+}
+.reader-content,
+.reader-article,
+.feed-original.reader-content {
+  font-family: var(--type-reading);
+  font-size: clamp(16.5px, 1.15vw, 18px);
+  line-height: 2.02;
+  letter-spacing: .015em;
+  color: #35443b;
+}
+.reader-content p { margin: 0 0 1.15em }
+.reader-content h2,
+.reader-content h3 {
+  font-weight: 600;
+  letter-spacing: -.012em;
+  line-height: 1.45;
+  color: var(--ink-strong);
+}
+.reader-content blockquote {
+  font-size: .98em;
+  letter-spacing: .02em;
+  color: var(--ink-muted);
+}
+
+/* ── 按钮与说明文字 ───────────────────────────────────────── */
+.primary, .secondary { font-size: 13px; letter-spacing: .02em }
+.text-button { font-size: 12.5px; letter-spacing: .02em }
+.empty-state p,
+#empty-title { font-size: 14px; letter-spacing: .02em; color: var(--ink-muted) }
+#empty-description { font-size: 12.5px; letter-spacing: .02em; color: var(--ink-subtle) }
+.empty-state { text-align: center }
+.load-more { font-size: 12.5px; letter-spacing: .04em }
+
+/* 阅读栏宽：约 42em 的舒适行长，居中排布，图片仍随栏宽 */
+#reader-title,
+#reader-meta,
+#reader-content {
+  max-width: 42em;
+  margin-left: auto;
+  margin-right: auto;
+}
+#reader-content { padding-bottom: 8px }
+
+/* ── 移动端：略微收紧，保持呼吸感 ─────────────────────────── */
+@media (max-width: 700px) {
+  #reader-title,
+  #reader-meta,
+  #reader-content { max-width: 100% }
+
+  body { font-size: 13.5px; letter-spacing: .01em }
+  .brand { font-size: 19px; letter-spacing: -.015em }
+  .nav-item { font-size: 13px }
+
+  .page-title h1,
+  #page-heading { font-size: 22px; letter-spacing: -.018em }
+
+  .period-tab { font-size: 12px }
+  .group-heading { gap: 10px; padding-bottom: 12px }
+  .group-heading::before, .group-heading::after { max-width: 72px }
+  .group-heading h2 { font-size: 10.5px; letter-spacing: .16em }
+
+  .article h2, .article .article-title { font-size: 16.5px; line-height: 1.52 }
+  .wx-title { font-size: 16px; line-height: 1.52 }
+  .wx-name { font-size: 13px }
+  .wx-time, .article-time { font-size: 11px }
+  .article-summary, .article-excerpt { font-size: 13px; line-height: 1.8 }
+  .article-actions button, .article-actions a,
+  .wx-actions button { font-size: 11.5px }
+  .article-actions { gap: 14px }
+
+  #reader-title, .reader-title { font-size: 23px; letter-spacing: -.02em }
+  #reader-meta, .reader-meta { font-size: 11.5px }
+  .reader-content, .reader-article, .feed-original.reader-content {
+    font-size: 16px;
+    line-height: 1.95;
+    letter-spacing: .014em;
+  }
+}
