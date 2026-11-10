@@ -278,3 +278,153 @@ body {
     letter-spacing: .014em;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   第二轮精修：行内对位、日期面板、阅读页来源入口
+   ═══════════════════════════════════════════════════════════ */
+
+/* 标题换行更均衡，正文避免最后一行孤字 */
+.wx-title, .article h2, #reader-title, .page-title h1, #page-heading { text-wrap: balance }
+.article-summary, .article-excerpt, .reader-content p { text-wrap: pretty }
+
+/* 作者行：头像、名字、标签垂直居中，标签固定高度 */
+.wx-head { align-items: center; gap: 10px }
+.wx-byline { align-items: center; gap: 8px }
+.wx-name { line-height: 1.2 }
+.wx-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: #f2f5f2;
+  color: #7c8a80;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+.wx-time { line-height: 1.2; align-self: center }
+
+/* 卡片底部操作行：统一基线、统一高度，不再一大一小 */
+.wx-foot, .article-actions { align-items: center }
+.article-links { display: flex; align-items: center; gap: 18px }
+.article-links button, .article-links a,
+.wx-actions button {
+  line-height: 1;
+  padding: 5px 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .01em;
+}
+.wx-actions { align-items: center; gap: 16px }
+.wx-foot { justify-content: space-between }
+
+/* 分区标题：收紧字距（中文加宽字距会显得歪） */
+.group-heading h2 { letter-spacing: .06em }
+
+/* 阅读页：原文入口放在标题上方一行，轻量胶囊，不挤工具栏 */
+.reader-source-row {
+  max-width: 42em;
+  margin: 6px auto 14px;
+  display: flex;
+  justify-content: flex-start;
+}
+.reader-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: #f1f6f2;
+  color: #2f5a45;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.reader-source-link:hover { background: #e4efe8; color: #1f4635 }
+.reader-actions { align-items: center }
+
+/* 日期筛选面板：卡片化、留白、轻阴影，不再是一排裸控件 */
+.panel-toolbar.filter-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 12px;
+}
+.range-panel {
+  display: grid;
+  width: 100%;
+  max-width: 560px;
+  gap: 12px;
+  margin: 2px 0 4px;
+  padding: 14px 16px 15px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 14px;
+  background: #fbfcfa;
+  box-shadow: 0 8px 22px rgba(24, 48, 34, .05);
+  animation: orlet-range-in .18s ease both;
+}
+@keyframes orlet-range-in {
+  from { opacity: 0; transform: translateY(-4px) }
+  to { opacity: 1; transform: none }
+}
+.range-presets { display: flex; gap: 6px; flex-wrap: wrap }
+.range-preset {
+  height: 30px;
+  padding: 0 13px;
+  border: 1px solid #e3e8e3;
+  border-radius: 999px;
+  background: #fff;
+  color: #4d5c53;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.range-preset:hover { border-color: #b9cdbf; color: #2f5a45; background: #f6faf7 }
+.range-fields { display: flex; align-items: flex-end; gap: 10px }
+.range-field { display: flex; flex-direction: column; gap: 5px; min-width: 0 }
+.range-field span { font-size: 11px; color: #8b978f; letter-spacing: .04em }
+.range-field input[type="date"] {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #e3e8e3;
+  border-radius: 10px;
+  background: #fff;
+  color: #2b3730;
+  font-family: var(--type-num);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.range-field input[type="date"]:focus {
+  outline: none;
+  border-color: #8fb39f;
+  box-shadow: 0 0 0 3px #e8f1ec;
+}
+.range-dash { color: #b8c2bb; padding-bottom: 12px; font-size: 12px }
+.range-actions { display: flex; justify-content: flex-end; gap: 8px }
+.range-actions .primary, .range-actions .secondary { height: 34px; padding: 0 16px; border-radius: 9px; font-size: 12.5px }
+
+@media (max-width: 700px) {
+  .range-panel { padding: 12px 12px 13px; border-radius: 12px; gap: 11px }
+  .range-presets { gap: 5px }
+  .range-preset { height: 28px; padding: 0 11px; font-size: 11.5px }
+  .range-fields { flex-wrap: wrap; gap: 8px }
+  .range-field { flex: 1 1 44% }
+  .range-field input[type="date"] { width: 100%; height: 38px; font-size: 13.5px }
+  .range-dash { display: none }
+  .range-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+  .range-actions .primary, .range-actions .secondary { width: 100%; height: 40px }
+  .wx-tag { height: 19px; font-size: 10px; padding: 0 6px }
+  .article-links { gap: 14px }
+  .article-links button, .article-links a, .wx-actions button { font-size: 11.5px }
+  .reader-source-link { height: 26px; padding: 0 9px; font-size: 11.5px }
+}
+

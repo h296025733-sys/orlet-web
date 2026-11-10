@@ -9,14 +9,14 @@
   <meta name="theme-color" content="#315b49">
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css?v=88a199b550a2">
-  <link rel="stylesheet" href="./typography.css?v=de2f6aba0093">
+  <link rel="stylesheet" href="./reader-shell.css?v=6a6a00f5d264">
   <link rel="stylesheet" href="./filter-bar.css?v=c0d25129a080">
-  <link rel="stylesheet" href="./reader-shell.css?v=4b68fb62e2c8">
-  <script src="./backend-bridge.js?v=22b8f6c69de6"></script>
-  <script type="module" src="./share-client.js?v=332512484a5d"></script>
-  <link rel="stylesheet" href="./quote-overlay.css">
+  <link rel="stylesheet" href="./typography.css?v=7e4941acc27f">
+  <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
   <script type="module" src="./quote-overlay.js?v=e7237e765319"></script>
-<script type="module" src="./app.js?v=5acdb07e585a"></script>
+<script src="./backend-bridge.js?v=98bfec9c4923"></script>
+  <script type="module" src="./share-client.js?v=332512484a5d"></script>
+  <script type="module" src="./app.js?v=4e3fc55d5f72"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -78,14 +78,23 @@
           <div class="period-tabs" aria-label="时间与未读筛选">
             <button class="period-tab active" data-tab="today" aria-pressed="true">今天<span class="period-count" id="period-count-today"></span></button>
             <button class="period-tab" data-tab="range" aria-pressed="false" id="range-tab">日期<span class="period-count" id="range-label"></span></button>
-            <button class="period-tab unread-chip" aria-pressed="false" id="unread-chip">未读<span class="period-count" id="period-count-unread"></span></button>
+            <button class="period-tab unread-chip" data-unread="1" aria-pressed="false" id="unread-chip">未读<span class="period-count" id="period-count-unread"></span></button>
           </div>
           <div class="range-panel" id="range-panel" hidden>
-            <input type="date" id="range-from" aria-label="开始日期">
-            <span class="range-dash">至</span>
-            <input type="date" id="range-to" aria-label="结束日期">
-            <button type="button" class="primary" id="range-apply">应用</button>
-            <button type="button" class="secondary" id="range-clear">清除</button>
+            <div class="range-presets" role="group" aria-label="快捷范围">
+              <button type="button" class="range-preset" data-range-days="1">今天</button>
+              <button type="button" class="range-preset" data-range-days="7">近 7 天</button>
+              <button type="button" class="range-preset" data-range-days="30">近 30 天</button>
+            </div>
+            <div class="range-fields">
+              <label class="range-field"><span>开始</span><input type="date" id="range-from"></label>
+              <span class="range-dash" aria-hidden="true">—</span>
+              <label class="range-field"><span>结束</span><input type="date" id="range-to"></label>
+            </div>
+            <div class="range-actions">
+              <button type="button" class="secondary" id="range-clear">清除</button>
+              <button type="button" class="primary" id="range-apply">应用</button>
+            </div>
           </div>
         </div>
         <div class="feed-meta"><span id="feed-count"></span><button class="text-button" id="read-all" disabled>本区域标为已读</button><span class="timezone-label">北京时间</span></div>
@@ -104,12 +113,12 @@
         <div class="reader-toolbar"><button class="text-button" id="reader-back" title="返回列表 · Esc">← 返回列表</button><div class="reader-actions"><button class="text-button" id="reader-analysis" hidden>AI 分析</button><button class="text-button" id="reader-star">☆ 收藏</button><button class="text-button" id="reader-read">标为未读</button><div class="reader-pagination"><button id="reader-prev" aria-label="上一篇" title="上一篇 · ←" disabled>‹</button><button id="reader-next" aria-label="下一篇" title="下一篇 · →" disabled>›</button></div></div></div>
         <article class="reader-article">
           <div class="article-meta" id="reader-meta"></div>
+          <div class="reader-source-row"><a class="reader-source-link" id="reader-source" target="_blank" rel="noopener noreferrer" hidden>查看原文 ↗</a></div>
           <h1 id="reader-title" tabindex="-1"></h1>
           <div class="reader-status" id="reader-status" role="status"></div>
           <div class="reader-content" id="reader-content"></div>
           <button id="quote-save" class="quote-save" type="button" hidden>划线收藏</button>
           <div class="reader-retry" id="reader-retry-wrap" hidden><button class="secondary" id="reader-retry">重试</button></div>
-          <footer class="reader-footer"><a id="reader-source" target="_blank" rel="noopener noreferrer">来源 ↗</a></footer>
         </article>
       </section>
       <div class="sr-only" aria-hidden="true"><span id="metric-sources">0</span><span id="metric-unread">0</span><span id="metric-today">0</span><span id="attention-stat" hidden><span id="metric-attention">0</span></span><div hidden><button data-filter=""></button><button data-filter="x"></button><button data-filter="xiaohongshu"></button><button data-filter="wechat"></button></div></div>
@@ -178,7 +187,7 @@
     <details class="setup-section setup-advanced"><summary>扩展连接</summary><div class="setup-section"><label>扩展目录</label><code id="extension-path"></code></div><div class="setup-section"><label for="bridge-key">配对码</label><div class="key-row"><input id="bridge-key" type="password" readonly><button class="secondary" id="copy-key">复制</button></div></div></details>
     <div class="setup-section"><div class="runtime-row"><span id="extension-version"></span><button class="secondary" id="notification-test">测试通知</button></div><p id="extension-reload" hidden>扩展待刷新</p><p id="notification-status" role="status"></p></div>
     <div class="setup-rss" hidden><a href="http://127.0.0.1:47822/" target="_blank" rel="noopener noreferrer">连接公众号 ↗</a></div>
-    <div class="setup-export"><a href="/api/export" download>导出已保存内容 ↗</a></div>
+    <div class="setup-export"><a href="./api/export" download>导出已保存内容 ↗</a></div>
     <button class="primary full-width" data-close="setup-dialog">完成</button>
   </dialog>
   <div id="toast" role="status" hidden></div>

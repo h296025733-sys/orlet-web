@@ -1,6 +1,6 @@
-import {interpretXhsTime} from './xhs-time.js';
-import {createLibraryUi} from './library-ui.js';
-import {createAnalysisUi} from './analysis-ui.js';
+import {interpretXhsTime} from './xhs-time.js?v=35dca5b261d0';
+import {createLibraryUi} from './library-ui.js?v=257a8196ebff';
+import {createAnalysisUi} from './analysis-ui.js?v=543aa9eaf0b7';
 const $=s=>document.querySelector(s);
 const platforms={x:'X',xiaohongshu:'小红书',wechat:'微信公众号'};
 const visiblePlatforms=new Set(['x','xiaohongshu','wechat']);
@@ -225,8 +225,7 @@ function wechatCardHtml(a){
   const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">微信公众号</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
   const linkAttrs=`href="${esc(source)}" target="_blank" rel="noopener noreferrer" data-original="${a.id}"`;
   const title=source?`<h2 class="wx-title"><a ${linkAttrs}>${esc(articleTitle(a))}</a></h2>`:`<h2 class="wx-title">${esc(articleTitle(a))}</h2>`;
-  const open=source?`<a class="wx-open" ${linkAttrs}>查看原文<span class="wx-arrow" aria-hidden="true">↗</span></a>`:'';
-  const links=documentArchiveEnabled()||aiAnalysisEnabled()?`<div class="article-links">${documentEntryHtml(a)}${analysisEntryHtml(a)}${open}</div>`:open;
+  const links=documentArchiveEnabled()||aiAnalysisEnabled()?`<div class="article-links">${documentEntryHtml(a)}${analysisEntryHtml(a)}</div>`:'';
   const foot=`<div class="wx-foot">${links}<div class="wx-actions"><button data-star="${a.id}" class="${a.starred?'is-starred':''}" aria-label="${a.starred?'取消收藏':'收藏'}">${a.starred?'★ 已收藏':'☆ 收藏'}</button><button data-read="${a.id}">${a.is_read?'标为未读':'标为已读'}</button></div></div>`;
   return `<article class="article wechat-card ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${head}${title}${foot}</article>`;
 }
@@ -250,7 +249,7 @@ function articleHtml(a){
   const metadata=metadataCard(a),source=metadata?originalLink(a):'',linkAttrs=`href="${esc(source)}" target="_blank" rel="noopener noreferrer" data-original="${a.id}"`;
   if(metadata)return wechatCardHtml(a);
   const title=metadata?(source?`<a class="article-title" ${linkAttrs}>${esc(articleTitle(a))}</a>`:esc(articleTitle(a))):`<button class="article-title" data-open="${a.id}">${esc(articleTitle(a))}</button>`;
-  const action=documentArchiveEnabled()?`${documentEntryHtml(a)}${safeExternal(a.url)?`<a class="article-read" href="${esc(safeExternal(a.url))}" target="_blank" rel="noopener noreferrer" data-original="${a.id}">查看原文 ↗</a>`:''}`:metadata?(source?`<a class="article-read" ${linkAttrs}>查看原文<span aria-hidden="true"> ↗</span></a>`:''):`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
+  const action=documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
   return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions"><button data-star="${a.id}" class="${a.starred?'is-starred':''}" aria-label="${a.starred?'取消收藏':'收藏'}">${a.starred?'★ 已收藏':'☆ 收藏'}</button><button data-read="${a.id}">${a.is_read?'标为未读':'标为已读'}</button>${action}${analysisEntryHtml(a)}</div></div></article>`;
 }
 function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,sourceAvatar(a)]);}
@@ -843,6 +842,14 @@ document.querySelectorAll('[data-filter]').forEach(el=>el.addEventListener('clic
 document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{void selectTab(el.dataset.tab);}));
 if($('#unread-chip'))$('#unread-chip').addEventListener('click',()=>{void selectTab(normalizeTab(state.tab)==='unread'?'today':'unread');});
 if($('#range-apply'))$('#range-apply').addEventListener('click',()=>{const from=$('#range-from').value,to=$('#range-to').value;if(!from||!to){toast('请选择开始和结束日期');return;}if(from>to){toast('开始日期不能晚于结束日期');return;}void applyFeedFilter({tab:'range',range:{from,to}});});
+document.querySelectorAll('[data-range-days]').forEach(el=>el.addEventListener('click',()=>{
+  const days=Math.max(1,Number(el.dataset.rangeDays)||7);
+  const day=offset=>new Date(Date.now()+8*3600000-offset*86400000).toISOString().slice(0,10);
+  const from=day(days-1),to=day(0);
+  if($('#range-from'))$('#range-from').value=from;
+  if($('#range-to'))$('#range-to').value=to;
+  void applyFeedFilter({tab:'range',range:{from,to}});
+}));
 if($('#range-clear'))$('#range-clear').addEventListener('click',()=>{$('#range-from').value='';$('#range-to').value='';void applyFeedFilter({tab:'today',range:null});});
 document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',()=>$('#'+el.dataset.close).close()));
 function showAdd(){ $('#source-error').textContent='';$('#wechat-search-error').textContent='';applyAddPlatform(state.view==='sources'&&state.monitorPlatform?state.monitorPlatform:addPlatform);$('#add-dialog').showModal(); }
