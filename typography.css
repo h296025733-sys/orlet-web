@@ -124,12 +124,40 @@ body {
   font-size: 11px;
   letter-spacing: .04em;
   color: var(--ink-subtle);
-  min-height: 0;
-  padding: 0 2px 2px;
+  min-height: 34px;
+  padding: 0 2px 8px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
+.feed-meta .timezone-label { margin: 0; display: inline; order: -1 }
 .feed-meta .text-button { font-size: 11.5px; letter-spacing: .02em }
-.feed-meta #read-all { margin-left: auto; opacity: .85 }
-.feed-meta #read-all:hover { opacity: 1 }
+.feed-meta #feed-count { font-size: 12px; color: var(--ink-muted) }
+.feed-meta #read-all {
+  margin: 0 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 13px;
+  border: 1px solid #e2e7e2;
+  border-radius: 999px;
+  background: #fff;
+  color: #4d5c53;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.feed-meta #read-all::before {
+  content: "✓";
+  margin-right: 5px;
+  color: #3f7a58;
+  font-weight: 600;
+}
+.feed-meta #read-all:not(:disabled):hover { border-color: #b9cdbf; background: #f6faf7; color: #2f5a45 }
+.feed-meta #read-all:disabled { opacity: .45; background: #fbfcfb }
 
 /* ── 列表卡片 ─────────────────────────────────────────────── */
 .article h2,
@@ -360,7 +388,7 @@ body {
 .range-panel {
   display: grid;
   width: 100%;
-  max-width: 560px;
+  max-width: 500px;
   gap: 12px;
   margin: 2px 0 4px;
   padding: 14px 16px 15px;
@@ -389,10 +417,20 @@ body {
   transition: border-color .15s ease, color .15s ease, background .15s ease;
 }
 .range-preset:hover { border-color: #b9cdbf; color: #2f5a45; background: #f6faf7 }
-.range-fields { display: flex; align-items: flex-end; gap: 10px }
+.range-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
+}
 .range-field { display: flex; flex-direction: column; gap: 5px; min-width: 0 }
 .range-field span { font-size: 11px; color: #8b978f; letter-spacing: .04em }
 .range-field input[type="date"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   height: 36px;
   padding: 0 10px;
   border: 1px solid #e3e8e3;
@@ -402,6 +440,7 @@ body {
   font-family: var(--type-num);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 .range-field input[type="date"]:focus {
   outline: none;
@@ -416,15 +455,44 @@ body {
   .range-panel { padding: 12px 12px 13px; border-radius: 12px; gap: 11px }
   .range-presets { gap: 5px }
   .range-preset { height: 28px; padding: 0 11px; font-size: 11.5px }
-  .range-fields { flex-wrap: wrap; gap: 8px }
-  .range-field { flex: 1 1 44% }
-  .range-field input[type="date"] { width: 100%; height: 38px; font-size: 13.5px }
+  /* 手机上日期框一列一个，避免两个原生控件挤在一起、宽度溢出 */
+  .range-fields { grid-template-columns: minmax(0, 1fr); gap: 9px }
+  /* 16px 是 iOS 不自动放大的下限，同时给原生日期控件留足高度 */
+  .range-field input[type="date"] { height: 46px; font-size: 16px; padding: 0 12px; line-height: 1.2 }
   .range-dash { display: none }
-  .range-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
-  .range-actions .primary, .range-actions .secondary { width: 100%; height: 40px }
+  .range-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-self: stretch }
+  .range-actions .primary, .range-actions .secondary { width: 100%; height: 44px; font-size: 14px }
   .wx-tag { height: 19px; font-size: 10px; padding: 0 6px }
   .article-links { gap: 14px }
   .article-links button, .article-links a, .wx-actions button { font-size: 11.5px }
   .reader-source-link { height: 26px; padding: 0 9px; font-size: 11.5px }
 }
 
+
+/* iOS Safari：原生日期控件、按钮高度与字号单独校准 */
+@supports (-webkit-touch-callout: none) {
+  .range-field input[type="date"] {
+    height: 48px;
+    font-size: 16px;
+    padding: 0 14px;
+    border-radius: 11px;
+  }
+  .range-actions .primary,
+  .range-actions .secondary { height: 46px; font-size: 14.5px }
+  .range-preset { height: 32px; padding: 0 14px; font-size: 12.5px }
+  .range-panel { padding: 14px 14px 15px }
+  .feed-meta { min-height: 36px }
+  .feed-meta #read-all { height: 32px; padding: 0 14px; font-size: 12.5px }
+}
+
+/* 超窄屏（iPhone SE / 320px 级） */
+@media (max-width: 360px) {
+  .range-presets { gap: 6px }
+  .range-preset { padding: 0 10px; font-size: 11.5px }
+  .range-field input[type="date"] { font-size: 15px }
+  .range-actions .primary, .range-actions .secondary { font-size: 13px }
+  .feed-meta #read-all { padding: 0 10px; font-size: 11px }
+}
+/* 移动端基础：禁止横屏字号膨胀、去掉点击 300ms 延迟 */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100% }
+button, .range-preset, #read-all, a { touch-action: manipulation }
