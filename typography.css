@@ -12,11 +12,11 @@ button, a { touch-action: manipulation }
 ::selection { background: #d8e6ef; color: #24323d }
 ::placeholder { color: #737e87; opacity: 1 }
 .nav-count, .period-count, .wx-time, .article-time { font-variant-numeric: tabular-nums }
-.article h2, .article .article-title, .library-entry h2 { font-size: 22px; line-height: 1.6; font-weight: 500; letter-spacing: -.02em; text-wrap: pretty }
+.article h2, .article .article-title, .library-entry h2 { font-size: 22px; line-height: 1.5; font-weight: 600; letter-spacing: -.02em; text-wrap: pretty }
 .wx-title .article-title { font: inherit; letter-spacing: inherit; color: inherit }
-#reader-title { font-size: 32px; line-height: 1.55; font-weight: 500; letter-spacing: -.025em; text-wrap: pretty; overflow-wrap: anywhere }
-.reader-content, .feed-original.reader-content { font-family: var(--type-reading); font-size: 18px; line-height: 1.95; letter-spacing: 0; color: #3c4852 }
-.reader-content p { margin: 0 0 1.3em; text-wrap: pretty }
+#reader-title { font-size: 34px; line-height: 1.45; font-weight: 600; letter-spacing: -.025em; text-wrap: pretty; overflow-wrap: anywhere }
+.reader-content, .feed-original.reader-content { font-family: var(--type-reading); font-size: 18px; line-height: 1.9; letter-spacing: 0; color: #3c4852 }
+.reader-content p { margin: 0 0 1.1em; text-wrap: pretty }
 .reader-content h2, .reader-content h3 { margin: 1.8em 0 .75em; font-weight: 600; line-height: 1.6; letter-spacing: 0; color: #24323d }
 .reader-content h2 { font-size: 1.3em }
 .reader-content h3 { font-size: 1.15em }
@@ -33,10 +33,10 @@ button, a { touch-action: manipulation }
 .analysis-result h3 { font-size: 16px; color: #24323d }
 .analysis-brief { font-size: 17px; line-height: 1.8 }
 @media (max-width: 700px) {
-  .article h2, .article .article-title, .library-entry h2 { font-size: 19px; line-height: 1.65; letter-spacing: 0 }
-  #reader-title { font-size: 26px; line-height: 1.55 }
-  .reader-content, .feed-original.reader-content { font-size: 17px; line-height: 1.9 }
-  .reader-content p { margin-bottom: 1.2em }
+  .article h2, .article .article-title, .library-entry h2 { font-size: 20px; line-height: 1.5; letter-spacing: 0 }
+  #reader-title { font-size: 28px; line-height: 1.45 }
+  .reader-content, .feed-original.reader-content { font-size: 17px; line-height: 1.85 }
+  .reader-content p { margin-bottom: 1.05em }
   .reader-content h2, .reader-content h3 { margin-top: 1.5em; margin-bottom: .65em; line-height: 1.6 }
   .reader-content blockquote { padding-left: 16px }
   .reader-content figure { margin-block: 24px }
