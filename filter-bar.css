@@ -228,3 +228,24 @@ main, .monitor-mode main { width: 100%; max-width: 1100px; padding: 20px 40px 80
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .article, .author-nav, .nav-item, .range-panel { transition: none; animation: none }
 }
+
+/* Reading starts with the title; source navigation belongs to the toolbar. */
+.wx-title .article-title { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer }
+.wx-title .article-title:hover { color: #315b49 }
+.reader-toolbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 12px 24px }
+#reader-back { grid-column: 1; grid-row: 1; justify-self: start; white-space: nowrap }
+.reader-actions { grid-column: 2; grid-row: 1; justify-content: flex-end; align-items: center; gap: 14px; min-width: 0 }
+.reader-toolbar #reader-source { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; justify-content: center; height: auto; min-height: 36px; padding: 0 4px 0 16px; margin: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; color: #718578; font-size: 12px; line-height: 1.5; text-decoration: none; white-space: nowrap }
+.reader-toolbar #reader-source:hover { color: #315b49; background: transparent; text-decoration: underline }
+.reader-article { padding-top: 28px }
+.reader-article #reader-title { margin-top: 0; margin-bottom: 28px }
+@media (max-width: 700px) {
+  .reader-toolbar { grid-template-columns: 1fr auto; gap: 2px 12px; padding: 6px 12px }
+  .reader-toolbar #reader-source { grid-column: 2; grid-row: 1; justify-self: end; border: 0; padding: 0 4px; min-height: 44px; font-size: 12px }
+  #reader-back { min-height: 44px }
+  .reader-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-content: space-between; flex-wrap: nowrap; gap: 4px }
+  .reader-actions .text-button { min-height: 44px; padding: 0 3px; font-size: 11px }
+  .reader-actions .reader-pagination { margin-left: auto; gap: 2px; padding-left: 4px }
+  .reader-article { padding: 22px 17px 32px }
+  .reader-article #reader-title { margin: 0 0 22px }
+}

@@ -221,10 +221,9 @@ function xhsCardHtml(a){
   return `<article class="article xhs-card ${cover?'has-cover':''} ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${image}<div class="xhs-body"><div class="xhs-head">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar red')}<div class="xhs-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta xhs-meta"><span class="xhs-tag">小红书</span><time class="article-time"${instant?` datetime="${esc(instant)}"`:''}>${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><h2 class="xhs-title">${title}</h2><div class="xhs-foot">${links}<div class="xhs-actions"><button data-star="${a.id}" class="${a.starred?'is-starred':''}" aria-label="${a.starred?'取消收藏':'收藏'}">${a.starred?'★ 已收藏':'☆ 收藏'}</button><button data-read="${a.id}">${a.is_read?'标为未读':'标为已读'}</button></div></div></div></article>`;
 }
 function wechatCardHtml(a){
-  const source=originalLink(a),avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase();
+  const avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase();
   const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">微信公众号</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
-  const linkAttrs=`href="${esc(source)}" target="_blank" rel="noopener noreferrer" data-original="${a.id}"`;
-  const title=source?`<h2 class="wx-title"><a ${linkAttrs}>${esc(articleTitle(a))}</a></h2>`:`<h2 class="wx-title">${esc(articleTitle(a))}</h2>`;
+  const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}">${esc(articleTitle(a))}</button></h2>`;
   const links=documentArchiveEnabled()||aiAnalysisEnabled()?`<div class="article-links">${documentEntryHtml(a)}${analysisEntryHtml(a)}</div>`:'';
   const foot=`<div class="wx-foot">${links}<div class="wx-actions"><button data-star="${a.id}" class="${a.starred?'is-starred':''}" aria-label="${a.starred?'取消收藏':'收藏'}">${a.starred?'★ 已收藏':'☆ 收藏'}</button><button data-read="${a.id}">${a.is_read?'标为未读':'标为已读'}</button></div></div>`;
   return `<article class="article wechat-card ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${head}${title}${foot}</article>`;
@@ -626,7 +625,6 @@ function stopReader(){libraryUi.cancel();readerGeneration++;clearTimeout(readerT
 function renderReader(error=''){
   const article=state.reader;
   $('#reader-title').textContent=articleTitle(article);
-  $('#reader-meta').textContent=article?[article.author,platforms[article.platform],articleTime(article)].filter(Boolean).join(' · '):'';
   const archived=documentReaderCurrent(),document=state.readerDocument,complete=archived?document?.content?.complete===true:completeContent(article),metadata=!archived&&metadataCard(article);
   $('#reader-title').hidden=!archived&&complete&&article?.platform==='x';
   if(archived){
@@ -651,7 +649,7 @@ function renderReader(error=''){
   $('#reader-star').textContent=article?.starred?'★ 已收藏':'☆ 收藏';
   $('#reader-read').textContent=article?.is_read?'标为未读':'标为已读';
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
-  const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent=archived||metadata?'查看原文 ↗':'来源 ↗';
+  const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent='原文 ↗';
   const index=state.articles.findIndex(item=>item.id===state.readerId);$('#reader-prev').disabled=index<=0;$('#reader-next').disabled=index<0||index>=state.articles.length-1;
 }
 function applyReader(article,generation){

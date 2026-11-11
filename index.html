@@ -12,11 +12,11 @@
   <link rel="stylesheet" href="./reader-shell.css?v=6a6a00f5d264">
   <link rel="stylesheet" href="./typography.css?v=50fe2a810b75">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
-  <link rel="stylesheet" href="./filter-bar.css?v=ecc2392851e0">
+  <link rel="stylesheet" href="./filter-bar.css?v=703de7966ba3">
   <script type="module" src="./quote-overlay.js?v=e7237e765319"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=332512484a5d"></script>
-  <script type="module" src="./app.js?v=c133969f5222"></script>
+  <script type="module" src="./app.js?v=e0301a7f7f18"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -113,10 +113,8 @@
         <p id="library-status" class="library-status" role="status"></p><div id="library-list" class="library-list"></div><p id="library-empty" class="empty-state" hidden></p><button id="library-more" class="secondary" hidden>加载更多</button>
       </section>
       <section class="reader-view" id="reader-view" aria-label="原文阅读" tabindex="-1" hidden>
-        <div class="reader-toolbar"><button class="text-button" id="reader-back" title="返回列表 · Esc">← 返回列表</button><div class="reader-actions"><button class="text-button" id="reader-analysis" hidden>AI 分析</button><button class="text-button" id="reader-star">☆ 收藏</button><button class="text-button" id="reader-read">标为未读</button><div class="reader-pagination"><button id="reader-prev" aria-label="上一篇" title="上一篇 · ←" disabled>‹</button><button id="reader-next" aria-label="下一篇" title="下一篇 · →" disabled>›</button></div></div></div>
+        <div class="reader-toolbar"><button class="text-button" id="reader-back" title="返回列表 · Esc">← 返回列表</button><a class="text-button reader-source-link" id="reader-source" target="_blank" rel="noopener noreferrer" aria-label="在原网站查看文章" hidden>原文 ↗</a><div class="reader-actions"><button class="text-button" id="reader-analysis" hidden>AI 分析</button><button class="text-button" id="reader-star">☆ 收藏</button><button class="text-button" id="reader-read">标为未读</button><div class="reader-pagination"><button id="reader-prev" aria-label="上一篇" title="上一篇 · ←" disabled>‹</button><button id="reader-next" aria-label="下一篇" title="下一篇 · →" disabled>›</button></div></div></div>
         <article class="reader-article">
-          <div class="article-meta" id="reader-meta"></div>
-          <div class="reader-source-row"><a class="reader-source-link" id="reader-source" target="_blank" rel="noopener noreferrer" hidden>查看原文 ↗</a></div>
           <h1 id="reader-title" tabindex="-1"></h1>
           <div class="reader-status" id="reader-status" role="status"></div>
           <div class="reader-content" id="reader-content"></div>
