@@ -283,31 +283,37 @@ dialog .dialog-actions { gap: 9px }
   main, .monitor-mode main { max-width: 100%; padding: 20px max(16px, env(safe-area-inset-right)) max(44px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)) }
   .workspace-heading { gap: 16px; margin-bottom: 18px }
   .content-tabs { justify-content: flex-start; gap: 28px; border-radius: 0; padding: 0; display: flex }
-  .content-tab { flex: 0 0 auto; min-height: 50px; padding: 0 0 14px; font-size: 22px; line-height: 1.3; gap: 6px }
+  .content-tab { flex: 0 0 auto; min-height: 50px; padding: 0 0 14px; font-size: 22px; line-height: 1.3; gap: 6px; color: #6c7370 }
   .content-tab .button-icon { width: 18px; height: 18px }
   .content-tab .period-count { font-size: 11px; padding-inline: 5px }
   .filter-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: 12px; padding-bottom: 14px; margin-bottom: 8px }
   .workspace-platforms, .monitor-mode .workspace-platforms { display: flex; align-items: center; justify-content: flex-start; flex-wrap: nowrap; margin: 0; padding: 0; gap: 5px }
-  .workspace-platforms .platform-nav { min-height: 40px; min-width: 51px; padding: 8px 12px; font-size: 13px; border-radius: 7px }
+  .workspace-platforms .platform-nav { min-height: 44px; min-width: 51px; padding: 10px 12px; font-size: 13px; line-height: 1.5; border-radius: 8px; color: #626b67 }
   #feed-filters { align-self: stretch; width: 100% }
-  .period-tabs { width: fit-content; max-width: 100%; flex-wrap: wrap; gap: 2px; padding: 3px }
-  .period-tab { min-height: 38px; padding: 7px 11px; font-size: 13px; white-space: normal }
-  #range-label { font-size: 10px }
-  #range-panel { inset: calc(100% + 9px) auto auto 0; width: 100%; max-width: 384px; padding: 18px; gap: 16px; border-radius: 13px }
+  .period-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; max-width: 100%; gap: 3px; padding: 3px; border-radius: 10px }
+  .period-tab { min-height: 44px; padding: 8px 5px; font-size: 13px; line-height: 1.5; white-space: normal; border-radius: 7px; color: #626b67 }
+  .period-count { font-size: 12px; line-height: 1.4 }
+  #range-tab { flex-wrap: wrap; align-content: center; gap: 2px 5px }
+  #range-label { flex-basis: 100%; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere }
+  #range-label:empty { display: none }
+  #range-panel { inset: calc(100% + 8px) auto auto 0; width: 100%; max-width: 384px; padding: 16px; gap: 14px; border-radius: 13px }
+  .range-panel-heading strong { font-size: 15px; line-height: 1.5 }
   #range-close { width: 44px; height: 44px }
-  .range-preset { min-height: 44px; padding: 8px 12px; font-size: 13px }
+  .range-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+  .range-preset { min-height: 44px; padding: 9px 4px; font-size: 13px; line-height: 1.5; border-radius: 8px }
   .range-fields { grid-template-columns: minmax(0, 1fr); gap: 12px }
-  .range-field span { font-size: 12px }
-  .range-field input[type="date"] { font-size: 16px; height: 46px; padding: 0 12px }
+  .range-field { gap: 6px }
+  .range-field span { font-size: 13px; line-height: 1.5 }
+  .range-field input[type="date"] { font-size: 16px; line-height: 1.5; height: 46px; padding: 0 12px; border-radius: 8px }
   .range-dash { display: none }
   .range-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 2px }
-  .range-actions .primary, .range-actions .secondary { min-height: 44px; font-size: 14px }
+  .range-actions .primary, .range-actions .secondary { min-height: 44px; font-size: 13px; line-height: 1.5; font-weight: 500; border-radius: 8px }
   .page-title h1, #page-heading { font-size: 23px; line-height: 1.4; overflow-wrap: anywhere }
   .page-title #add-open { min-height: 44px; font-size: 12px; padding-inline: 12px }
   .feed-meta { min-height: 40px; margin-bottom: 8px; padding: 0; gap: 8px }
   .feed-meta #read-all { min-height: 44px; font-size: 12px }
   .articles:not(:empty) { border-radius: 13px }
-  .article, .article.wechat-card, .article.xhs-card { padding: 20px 18px 14px; border-radius: 0 }
+  .article, .article.wechat-card, .article.xhs-card { padding: 20px 18px 12px; border-radius: 0 }
   .feed-group:first-child .article:first-child { border-radius: 13px 13px 0 0 }
   .feed-group:last-child .article:last-child { border-radius: 0 0 13px 13px }
   .wx-head { gap: 8px; min-height: 27px }
@@ -315,23 +321,35 @@ dialog .dialog-actions { gap: 9px }
   .wx-name { font-size: 13px; max-width: 12em }
   .wx-tag { display: none }
   .wx-time, .article-time { font-size: 12px }
-  .article h2, .article .article-title, .article .wx-title { font-size: 18px; font-weight: 600; line-height: 1.65; letter-spacing: -.01em }
-  .article .wx-title { margin: 12px 0 8px; -webkit-line-clamp: 3 }
-  .wx-foot { gap: 0 10px; flex-wrap: wrap }
+  .article h2, .article .article-title, .article .wx-title { font-size: 18px; font-weight: 600; line-height: 1.6; letter-spacing: 0 }
+  .article .wx-title { margin: 12px 0 10px; -webkit-line-clamp: 3 }
+  .wx-foot { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; align-items: center }
+  .wx-foot .article-links, .wx-foot .wx-actions { display: contents }
   .article-links { gap: 12px }
-  .article-links button, .article-links a, .wx-actions button, .xhs-actions button, .article-actions button, .article-actions a { min-height: 44px; min-width: 44px; font-size: 13px }
-  .article-links .analysis-open { padding: 5px 7px; min-height: 44px; position: relative; isolation: isolate; background: transparent }
-  .article-links .analysis-open::before { content: ""; position: absolute; inset: 7px 0; z-index: -1; border-radius: 5px; background: #f3f4f0 }
-  .wx-actions { gap: 2px; margin-left: auto }
-  .wx-actions button { padding: 5px 4px }
+  .article-links button, .article-links a, .wx-actions button, .xhs-actions button, .article-actions button, .article-actions a { min-height: 44px; min-width: 44px; font-size: 13px; line-height: 1.5; font-weight: 400 }
+  .wx-foot button, .wx-foot a { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-width: 0; padding: 5px 0; white-space: nowrap }
+  .wx-foot .document-open::after { display: none }
+  .article-links .analysis-open { padding: 5px 4px; min-height: 44px; position: relative; isolation: isolate; background: transparent }
+  .article-links .analysis-open::before { content: ""; position: absolute; inset: 6px 0; z-index: -1; border-radius: 7px; background: #f5f4f1 }
+  .wx-actions button { padding: 5px 0; color: #65706c }
   .library-toolbar { gap: 10px; padding-bottom: 14px }
   .library-kinds { flex: 1 0 100% }
-  .library-kinds button { flex: 1; min-height: 44px; font-size: 13px }
+  .library-kinds button { flex: 1; min-height: 44px; font-size: 13px; line-height: 1.5 }
   .library-toolbar select { flex: 1; min-width: 0; max-width: none; min-height: 44px; font-size: 16px }
-  .library-toolbar button, .library-card-foot button { min-height: 44px }
-  .library-card { padding: 22px 20px; border-radius: 13px }
-  .library-entry h2 { font-size: 18px; line-height: 1.65 }
-  .library-entry blockquote { font-size: 16px; padding-left: 16px }
+  .library-toolbar button, .library-card-foot button { min-height: 44px; font-size: 13px; line-height: 1.5 }
+  #library-tags-manage { padding: 8px; border-radius: 8px; background: #eeeee8; color: #5f6965 }
+  .library-list { gap: 12px }
+  .library-status, #feed-count { font-size: 12px; line-height: 1.5; color: #68736e }
+  .library-card { padding: 20px 18px 12px; border-radius: 13px; border-color: var(--line) }
+  .library-entry h2 { margin-bottom: 10px; font-size: 18px; font-weight: 600; line-height: 1.6; letter-spacing: 0; color: var(--ink) }
+  .library-entry > span { font-size: 13px; line-height: 1.5; color: #68756c }
+  .library-entry blockquote { margin: 0 0 16px; padding: 12px 14px; font-size: 17px; line-height: 1.85; border-radius: 0 8px 8px 0; background: #f7f4ef; color: #454b48 }
+  .library-entry:has(blockquote) h2 { font-size: 16px; font-weight: 500; line-height: 1.65 }
+  .library-card-foot { margin-top: 12px; padding-top: 8px; gap: 4px 10px; border-color: var(--line) }
+  .library-card-foot > div:last-child { display: flex; align-items: center; gap: 6px; margin-left: auto }
+  .library-card-foot button { padding: 6px 8px; min-width: 44px; color: #65706c }
+  .library-entry-tags { gap: 6px }
+  .library-entry-tags span { font-size: 12px; line-height: 1.5; padding: 4px 7px; background: #f1f0e9; color: #68735f }
   .monitor-browser { grid-template-columns: minmax(0, 1fr); gap: 16px }
   .monitor-items { display: flex; gap: 7px; max-height: none; overflow-x: auto }
   .monitor-item { flex: 0 0 190px; min-width: 190px; width: 190px }
@@ -339,15 +357,19 @@ dialog .dialog-actions { gap: 9px }
   .monitor-detail .source-name { font-size: 21px }
   .monitor-list-heading select, .source-actions button { min-height: 44px; font-size: 13px }
   .reader-view { margin: 0; border-radius: 13px }
-  .reader-toolbar { grid-template-columns: 1fr auto; gap: 2px 12px; padding: 6px 12px; border-radius: 13px 13px 0 0 }
-  .reader-toolbar #reader-source { grid-column: 2; grid-row: 1; justify-self: end; border: 0; padding: 0 4px; min-height: 44px; font-size: 12px }
-  #reader-back { min-height: 44px }
-  .reader-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 4px }
-  .reader-actions .text-button { min-height: 44px; padding: 0 3px; font-size: 12px }
-  .reader-actions .reader-pagination { margin-left: auto; padding-left: 0; gap: 2px }
-  .reader-pagination button { width: 40px; min-width: 40px; height: 44px }
-  .reader-article { padding: 26px 20px 40px }
-  .reader-article #reader-title { font-size: 26px; line-height: 1.5; margin-bottom: 26px }
+  .reader-toolbar { grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr); gap: 6px; padding: 8px 12px 10px; border-radius: 13px 13px 0 0 }
+  .reader-toolbar .text-button, .reader-toolbar #reader-source { min-height: 44px; font-size: 13px; line-height: 1.5; font-weight: 400; color: #65706c }
+  .reader-toolbar #reader-source { grid-column: 3; grid-row: 1; justify-self: end; border: 0; padding: 0 4px }
+  #reader-back { padding: 0; min-width: 0 }
+  .reader-actions { display: contents }
+  .reader-actions .text-button { display: inline-flex; align-items: center; justify-content: center; grid-row: 2; padding: 8px 3px; background: #f5f4f1; border-radius: 8px; white-space: nowrap }
+  #reader-analysis { grid-column: 1 }
+  #reader-star { grid-column: 2 }
+  #reader-read { grid-column: 3 }
+  .reader-actions .reader-pagination { grid-column: 2; grid-row: 1; margin: 0; padding: 0; gap: 4px; justify-content: center }
+  .reader-pagination button { width: 44px; min-width: 44px; height: 44px; border-color: #e6e4de; border-radius: 8px; font-size: 23px }
+  .reader-article { padding: 24px 20px 36px }
+  .reader-article #reader-title { font-size: 24px; line-height: 1.5; letter-spacing: 0; text-wrap: balance; margin-bottom: 24px }
   dialog { padding: 24px 20px; border-radius: 16px }
   dialog .dialog-title h2 { font-size: 20px }
   dialog input, dialog select, dialog textarea { font-size: 16px }
@@ -360,10 +382,10 @@ dialog .dialog-actions { gap: 9px }
   .content-tabs { gap: 25px }
   .article, .article.wechat-card { padding-inline: 16px }
   .article-links { gap: 10px }
-  .wx-foot .article-links { flex-basis: 100% }
-  .wx-foot .wx-actions { margin-left: 0; gap: 12px }
+  .library-card { padding-inline: 16px }
+  .reader-toolbar { padding-inline: 8px; gap: 6px 4px }
   .reader-article { padding-inline: 17px }
-  .reader-article #reader-title { font-size: 24px }
+  .reader-article #reader-title { font-size: 22px }
 }
 
 @media (prefers-reduced-motion: reduce) {
