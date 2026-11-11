@@ -1,498 +1,237 @@
-/* Orlet typography refinement — presentation only.
-   Loaded after style.css / reader-shell.css / filter-bar.css, so it only tunes
-   type: family, size, weight, rhythm, spacing and a few optical alignments.
-   No layout structure, no behavior. */
+/* Orlet UI polish · 2026-11-11
+   Presentation only. Navigation, reader structure and behavior are owned by
+   app.js / filter-bar.css. Scoped selectors keep this sheet independent of
+   their load order; no external fonts or font downloads are required. */
 
-:root {
-  --type-ui: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC",
-    "Noto Sans SC", "DengXian", "等线", "Microsoft YaHei UI", "Microsoft YaHei",
-    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --type-reading: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Source Han Sans SC",
-    "Noto Sans SC", "DengXian", "等线", "Microsoft YaHei UI", -apple-system, "Segoe UI", sans-serif;
-  --type-num: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-
-  --ink-strong: #1c2620;
-  --ink-body: #2b3730;
-  --ink-muted: #6d7a72;
-  --ink-subtle: #98a29a;
-  --rule-soft: #e8ece8;
+html:root {
+  --type-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+  --type-reading: var(--type-ui);
+  --type-num: var(--type-ui);
+  --ink-strong: #20352b;
+  --ink-body: #34443c;
+  --ink-muted: #607068;
+  --ink-subtle: #68776f;
+  --rule-soft: #e4eae5;
+  --canvas: #f5f7f5;
+  --sidebar: #fafbf9;
+  --line: #e1e7e2;
+  --accent: #315b49;
+  --accent-soft: #eaf1ec;
 }
 
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100% }
 html, body, button, input, select, textarea {
   font-family: var(--type-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-synthesis-weight: none;
+}
+body { font-size: 15px; line-height: 1.65; letter-spacing: 0; color: var(--ink-body) }
+body button, body input, body select, body textarea { letter-spacing: 0 }
+button, a { touch-action: manipulation }
+body ::placeholder { color: var(--ink-subtle); opacity: 1 }
+body ::selection { color: #203b2e; background: #d9e9de }
+body :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #4b7b60;
+  outline-offset: 3px;
 }
 
-body {
-  font-size: 14px;
-  line-height: 1.65;
-  letter-spacing: .012em;
-  color: var(--ink-body);
-}
+/* A quiet interface: clear text, restrained green, consistent controls. */
+body .brand { font-weight: 650; letter-spacing: -.035em; color: var(--ink-strong) }
+body .workspace-search { background: #f5f7f4; border-color: var(--line) }
+body .workspace-search:focus-within { border-color: #92b49f; box-shadow: 0 0 0 3px #e8f0eb }
+body .workspace-search input { color: var(--ink-body); font-size: 14px }
+body .nav-item { font-size: 14px; font-weight: 500; color: var(--ink-muted) }
+body .nav-item.active { color: #fff; background: var(--accent); box-shadow: none }
+body .manage-nav .nav-item { font-size: 14px }
+body .nav-section-heading { font-size: 12px; color: var(--ink-muted); letter-spacing: .02em }
+body .author-nav-name { font-size: 14px; font-weight: 500; line-height: 1.5; color: #40534a }
+body .author-platform { font-size: 12px; line-height: 1.5; color: var(--ink-subtle) }
+body .author-nav.active .author-nav-name { color: #284d39; font-weight: 600 }
+body .author-nav.active .author-platform { color: #54715f }
+body .nav-count, body .period-count { font-variant-numeric: tabular-nums; letter-spacing: 0; font-size: 12px }
+body .connection-control { color: var(--ink-muted); font-size: 12px }
+body .content-tabs { background: #e8eee8 }
+body .content-tab { font-size: 15px; font-weight: 500; color: #5b6c61 }
+body .content-tab.active, body .content-tab[aria-pressed="true"] { color: #284d39; font-weight: 600 }
+body .content-tab .period-count { font-size: 12px; background: #e1ebe2; color: #42604a }
+body .workspace-platforms .platform-nav { font-size: 14px; color: var(--ink-muted) }
+body .workspace-platforms .platform-nav.active { color: #315b49; background: #e7eee7; font-weight: 600 }
+body .period-tab { font-size: 14px; color: var(--ink-muted); font-weight: 500 }
+body .period-tab.active { color: #315b49; border-color: #d6e1d8; box-shadow: none }
+body #range-label { font-size: 12px }
+body .page-title h1, body #page-heading { font-weight: 650; letter-spacing: -.02em; color: var(--ink-strong) }
+body .primary, body .secondary, body .text-button { font-size: 14px; font-weight: 500; line-height: 1.5 }
+body .primary { background: var(--accent); border-color: var(--accent) }
+body .secondary { color: #496052; border-color: #d9e2db; background: #fff }
+body .feed-meta #feed-count { font-size: 13px; color: var(--ink-muted); font-variant-numeric: tabular-nums }
+body .feed-meta #read-all { font-size: 13px; font-weight: 500; color: #506859; border: 1px solid var(--line); border-radius: 9px; background: #fff; padding-inline: 12px }
+body .feed-meta #read-all:disabled { opacity: .5 }
 
-/* ── 顶栏与导航 ───────────────────────────────────────────── */
-.brand {
-  font-family: var(--type-ui);
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -.02em;
-  color: var(--ink-strong);
+/* Cards keep the existing navigation and actions, with stronger hierarchy. */
+body .article, body .article.wechat-card, body .library-card {
+  border-color: var(--line);
+  box-shadow: 0 2px 6px #213d2b04;
 }
-.brand img { border-radius: 9px }
-
-.nav-item {
-  font-size: 13.5px;
-  font-weight: 500;
-  letter-spacing: .015em;
-}
-.nav-count, .nav-item .nav-count {
-  font-family: var(--type-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  letter-spacing: 0;
-}
-
-.workspace-search input { font-size: 13px; letter-spacing: .012em }
-.breadcrumbs { font-size: 12.5px; letter-spacing: .01em }
-
-/* ── 页面标题区 ───────────────────────────────────────────── */
-.page-title { align-items: baseline }
-.page-title h1,
-#page-heading {
-  font-size: clamp(23px, 2.1vw, 28px);
-  font-weight: 600;
-  letter-spacing: -.022em;
-  line-height: 1.3;
-  color: var(--ink-strong);
-}
-#page-subtitle,
-.page-subtitle {
-  font-size: 12.5px;
-  color: var(--ink-subtle);
-  letter-spacing: .02em;
-}
-
-/* ── 时间 / 筛选 / 分区标题 ───────────────────────────────── */
-.period-tab {
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: .015em;
-}
-.period-count {
-  font-family: var(--type-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 10.5px;
-  letter-spacing: 0;
-}
-.range-panel input[type="date"] { font-family: var(--type-num); font-size: 12.5px }
-.timezone-label { font-size: 10.5px; letter-spacing: .08em; color: var(--ink-subtle) }
-
-/* 分区标题：左右细线包住，视觉上居中，像杂志栏目 */
-.group-heading {
-  justify-content: center;
-  gap: 16px;
-  padding: 10px 2px 16px;
-}
-.group-heading::before,
-.group-heading::after {
-  content: "";
-  flex: 1 1 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--rule-soft));
-  max-width: 34%;
-}
-.group-heading::after { background: linear-gradient(270deg, transparent, var(--rule-soft)) }
-.group-heading h2 {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: .18em;
-  color: var(--ink-subtle);
-  text-transform: none;
-}
-.group-heading span {
-  font-family: var(--type-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 10.5px;
-  letter-spacing: .04em;
-  color: var(--ink-subtle);
-}
-
-.feed-meta {
-  font-size: 11px;
-  letter-spacing: .04em;
-  color: var(--ink-subtle);
-  min-height: 34px;
-  padding: 8px 2px 8px;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.feed-meta .timezone-label { margin: 0; display: inline; order: -1 }
-.feed-meta .text-button { font-size: 11.5px; letter-spacing: .02em }
-.feed-meta #feed-count { font-size: 12px; color: var(--ink-muted) }
-.feed-meta #read-all {
-  margin: 0 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  height: 30px;
-  padding: 0 13px;
-  border: 1px solid #e2e7e2;
-  border-radius: 999px;
-  background: #fff;
-  color: #4d5c53;
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: .01em;
-  transition: border-color .15s ease, background .15s ease, color .15s ease;
-}
-.feed-meta #read-all::before {
-  content: "✓";
-  margin-right: 5px;
-  color: #3f7a58;
-  font-weight: 600;
-}
-.feed-meta #read-all:not(:disabled):hover { border-color: #b9cdbf; background: #f6faf7; color: #2f5a45 }
-.feed-meta #read-all:disabled { opacity: .45; background: #fbfcfb }
-
-/* ── 列表卡片 ─────────────────────────────────────────────── */
-.article h2,
-.article .article-title {
+body .article:hover, body .library-card:hover { border-color: #bdcec1; box-shadow: 0 3px 12px #213d2b07 }
+body .article h2, body .article .article-title, body .library-entry h2 {
   font-family: var(--type-reading);
-  font-size: clamp(17px, 1.35vw, 19px);
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: -.008em;
-  line-height: 1.55;
+  line-height: 1.6;
+  letter-spacing: 0;
   color: var(--ink-strong);
+  text-wrap: pretty;
 }
-.wx-title {
+body .article .wx-title { margin-top: 14px; -webkit-line-clamp: 3 }
+body .wx-title a, body .wx-title .article-title { color: inherit }
+body .wx-title .article-title { font: inherit; letter-spacing: inherit }
+body .wx-title .article-title:hover, body .wx-title a:hover { color: #34664e }
+body .wx-head { gap: 10px; align-items: center }
+body .wx-byline { gap: 8px; align-items: center; min-width: 0 }
+body .wx-name, body .article-author { font-size: 14px; font-weight: 500; line-height: 1.5; color: #40544a }
+body .wx-tag { font-size: 11px; font-weight: 400; line-height: 1.5; padding: 2px 6px; border-radius: 5px; background: #f0f4f1; color: #64756a; transform: none }
+body .wx-time, body .article-time { font-family: var(--type-ui); font-size: 12px; line-height: 1.5; color: var(--ink-subtle); font-variant-numeric: tabular-nums; letter-spacing: 0 }
+body .article-summary, body .article-excerpt { font-size: 15px; line-height: 1.85; color: var(--ink-muted); text-wrap: pretty }
+body .wx-foot, body .article-actions { align-items: center; gap: 12px }
+body .article-links { display: flex; align-items: center; flex-wrap: wrap; gap: 16px }
+body .wx-actions { align-items: center; gap: 8px }
+body .article-links button, body .article-links a, body .wx-actions button,
+body .article-actions button, body .article-actions a, body .xhs-actions button {
+  font-size: 13px; font-weight: 500; line-height: 1.5; min-height: 36px; color: var(--ink-muted);
+}
+body .article-links .document-open { color: #315b49; font-weight: 600 }
+body .wx-actions button.is-starred, body .article-actions .is-starred { color: #85621f }
+body .content-state { font-size: 12px; line-height: 1.6; color: var(--ink-muted) }
+
+/* Reader typography is scoped to content; toolbar layout stays in filter-bar. */
+body #reader-title, body .reader-title {
   font-family: var(--type-reading);
-  font-size: clamp(16.5px, 1.3vw, 18px);
-  font-weight: 600;
-  letter-spacing: -.008em;
-  line-height: 1.55;
+  font-size: clamp(26px, 2.25vw, 32px);
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: -.015em;
+  color: var(--ink-strong);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
-.wx-title a { color: var(--ink-strong) }
-
-.wx-name {
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: .01em;
-  color: var(--ink-body);
-}
-.wx-time,
-.article-time {
-  font-family: var(--type-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  letter-spacing: .01em;
-  color: var(--ink-subtle);
-}
-
-.article-summary,
-.article-excerpt {
-  font-size: 13.5px;
+body .reader-content, body .feed-original.reader-content {
+  font-family: var(--type-reading);
+  font-size: 18px;
   line-height: 1.9;
-  letter-spacing: .012em;
-  color: var(--ink-muted);
-}
-
-.article-actions { gap: 20px }
-.article-actions button,
-.article-actions a {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .02em;
-  color: var(--ink-muted);
-}
-.wx-actions button { font-size: 12px; letter-spacing: .02em }
-.content-state { font-size: 11px; letter-spacing: .03em }
-
-/* ── 阅读页 ───────────────────────────────────────────────── */
-#reader-title,
-.reader-title {
-  font-family: var(--type-reading);
-  font-size: clamp(26px, 2.6vw, 34px);
-  font-weight: 600;
-  letter-spacing: -.024em;
-  line-height: 1.36;
-  color: var(--ink-strong);
-}
-#reader-meta,
-.reader-meta {
-  font-family: var(--type-num);
-  font-size: 12.5px;
-  letter-spacing: .04em;
-  color: var(--ink-subtle);
-}
-.reader-content,
-.reader-article,
-.feed-original.reader-content {
-  font-family: var(--type-reading);
-  font-size: clamp(16.5px, 1.15vw, 18px);
-  line-height: 2.02;
-  letter-spacing: .015em;
-  color: #35443b;
-}
-.reader-content p { margin: 0 0 1.15em }
-.reader-content h2,
-.reader-content h3 {
-  font-weight: 600;
-  letter-spacing: -.012em;
-  line-height: 1.45;
-  color: var(--ink-strong);
-}
-.reader-content blockquote {
-  font-size: .98em;
-  letter-spacing: .02em;
-  color: var(--ink-muted);
-}
-
-/* ── 按钮与说明文字 ───────────────────────────────────────── */
-.primary, .secondary { font-size: 13px; letter-spacing: .02em }
-.text-button { font-size: 12.5px; letter-spacing: .02em }
-.empty-state p,
-#empty-title { font-size: 14px; letter-spacing: .02em; color: var(--ink-muted) }
-#empty-description { font-size: 12.5px; letter-spacing: .02em; color: var(--ink-subtle) }
-.empty-state { text-align: center }
-.load-more { font-size: 12.5px; letter-spacing: .04em }
-
-/* 阅读栏宽：约 42em 的舒适行长，居中排布，图片仍随栏宽 */
-#reader-title,
-#reader-meta,
-#reader-content {
-  max-width: 42em;
-  margin-left: auto;
-  margin-right: auto;
-}
-#reader-content { padding-bottom: 8px }
-
-/* ── 移动端：略微收紧，保持呼吸感 ─────────────────────────── */
-@media (max-width: 700px) {
-  #reader-title,
-  #reader-meta,
-  #reader-content { max-width: 100% }
-
-  body { font-size: 13.5px; letter-spacing: .01em }
-  .brand { font-size: 19px; letter-spacing: -.015em }
-  .nav-item { font-size: 13px }
-
-  .page-title h1,
-  #page-heading { font-size: 22px; letter-spacing: -.018em }
-
-  .period-tab { font-size: 12px }
-  .group-heading { gap: 10px; padding-bottom: 12px }
-  .group-heading::before, .group-heading::after { max-width: 72px }
-  .group-heading h2 { font-size: 10.5px; letter-spacing: .16em }
-
-  .article h2, .article .article-title { font-size: 16.5px; line-height: 1.52 }
-  .wx-title { font-size: 16px; line-height: 1.52 }
-  .wx-name { font-size: 13px }
-  .wx-time, .article-time { font-size: 11px }
-  .article-summary, .article-excerpt { font-size: 13px; line-height: 1.8 }
-  .article-actions button, .article-actions a,
-  .wx-actions button { font-size: 11.5px }
-  .article-actions { gap: 14px }
-
-  #reader-title, .reader-title { font-size: 23px; letter-spacing: -.02em }
-  #reader-meta, .reader-meta { font-size: 11.5px }
-  .reader-content, .reader-article, .feed-original.reader-content {
-    font-size: 16px;
-    line-height: 1.95;
-    letter-spacing: .014em;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   第二轮精修：行内对位、日期面板、阅读页来源入口
-   ═══════════════════════════════════════════════════════════ */
-
-/* 标题换行更均衡，正文避免最后一行孤字 */
-.wx-title, .article h2, #reader-title, .page-title h1, #page-heading { text-wrap: balance }
-.article-summary, .article-excerpt, .reader-content p { text-wrap: pretty }
-
-/* 作者行：头像、名字、标签垂直居中，标签固定高度 */
-.wx-head { align-items: center; gap: 10px }
-.wx-byline { align-items: center; gap: 8px }
-.wx-name { line-height: 1.2 }
-.wx-tag {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: 5px;
-  background: #f2f5f2;
-  color: #7c8a80;
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: .02em;
-  line-height: 1;
-  transform: translateY(-1px);
-}
-.wx-time { line-height: 1.2; align-self: center }
-
-/* 卡片底部操作行：统一基线、统一高度，不再一大一小 */
-.wx-foot, .article-actions { align-items: center }
-.article-links { display: flex; align-items: center; gap: 18px }
-.article-links button, .article-links a,
-.wx-actions button {
-  line-height: 1;
-  padding: 5px 0;
-  font-size: 12px;
-  font-weight: 500;
   letter-spacing: .01em;
+  color: #34443c;
 }
-.wx-actions { align-items: center; gap: 16px }
-.wx-foot { justify-content: space-between }
+body #reader-content { max-width: 40em; margin-inline: auto; padding-bottom: 8px }
+body .reader-content p { margin: 0 0 1.25em; text-wrap: pretty }
+body .reader-content h2 { font-size: 1.3em }
+body .reader-content h3 { font-size: 1.15em }
+body .reader-content h2, body .reader-content h3 { font-weight: 600; line-height: 1.6; letter-spacing: 0; color: var(--ink-strong); margin: 1.7em 0 .75em }
+body .reader-content blockquote { margin: 1.4em 0; padding: 14px 20px; font-size: 1em; line-height: 1.9; color: #53665a; border-left: 3px solid #a9c1af; background: #f3f7f3; border-radius: 0 8px 8px 0 }
+body .reader-content blockquote p:last-child { margin-bottom: 0 }
+body .reader-content a { color: #315f48; text-decoration-thickness: 1px; text-underline-offset: .2em }
+body .reader-content pre, body .reader-content code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing: 0 }
+body .reader-content pre { font-size: 14px; line-height: 1.7 }
+body .document-table { font-size: 16px; line-height: 1.75 }
+body .reader-toolbar .text-button, body .reader-toolbar #reader-source { font-size: 13px; font-weight: 500; color: #506859 }
+body .reader-pagination button { width: 36px; min-width: 36px; height: 36px; font-size: 24px; color: #506859 }
+body .reader-status { font-size: 14px; line-height: 1.75; color: var(--ink-muted) }
 
-/* 分区标题：收紧字距（中文加宽字距会显得歪） */
-.group-heading h2 { letter-spacing: .06em }
+/* Date panel retains native date inputs and the existing responsive grid. */
+body .range-panel { display: grid; gap: 14px; background: #fff; border-color: #d9e3db }
+body .range-fields { display: grid; align-items: end }
+body .range-field { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+body .range-field span { color: var(--ink-muted); font-size: 13px }
+body .range-field input[type="date"] { display: block; width: 100%; max-width: 100%; min-width: 0; padding: 0 11px; border: 1px solid #d5e0d8; border-radius: 8px; background: #fff; color: var(--ink-body); font-family: var(--type-ui); font-variant-numeric: tabular-nums }
+body .range-dash { padding-bottom: 10px; color: var(--ink-subtle) }
+body .range-preset { font-size: 13px; font-weight: 500; line-height: 1.5; color: #526b5b; border: 1px solid var(--line); background: #f8faf7 }
+body .range-preset:hover { background: #eaf1ea; border-color: #bfd1c2 }
+body .range-actions { display: flex; justify-content: flex-end; gap: 8px }
+body .range-actions .primary, body .range-actions .secondary { font-size: 14px; padding: 8px 18px; border-radius: 8px }
 
-/* 阅读页：原文入口放在标题上方一行，轻量胶囊，不挤工具栏 */
-.reader-source-row {
-  max-width: 42em;
-  margin: 6px auto 14px;
-  display: flex;
-  justify-content: flex-start;
-}
-.reader-source-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 11px;
-  border-radius: 999px;
-  background: #f1f6f2;
-  color: #2f5a45;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .01em;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.reader-source-link:hover { background: #e4efe8; color: #1f4635 }
-.reader-actions { align-items: center }
+/* Saved items, monitoring and dialogs use the same reading scale. */
+body .library-kinds button { font-size: 14px; font-weight: 500; color: #53685b }
+body .library-kinds button[aria-pressed="true"] { background: var(--accent); color: #fff }
+body .library-entry > span, body .library-status { font-size: 13px; line-height: 1.75; color: var(--ink-muted) }
+body .library-entry blockquote { font-size: 17px; line-height: 1.9; color: #344c3e; border-left-color: #a9c1af }
+body .library-card-foot button { font-size: 13px; color: #526b5b }
+body .library-entry-tags span { font-size: 12px; color: #536b55; background: #edf3e9 }
+body .monitor-item strong { font-size: 14px; font-weight: 600; line-height: 1.5 }
+body .monitor-item-meta { font-size: 12px; line-height: 1.6; color: var(--ink-muted) }
+body .monitor-item.active { background: var(--accent); color: #fff }
+body .monitor-item.active .monitor-item-meta { color: #d8e6dc }
+body .monitor-detail .source-name { font-weight: 600; letter-spacing: -.01em }
+body .monitor-detail .source-main p, body .source-actions button { font-size: 14px; line-height: 1.65; color: var(--ink-muted) }
+body .source-actions .primary { color: #fff }
+body .monitor-list-heading { font-size: 13px; color: var(--ink-muted) }
+body .status-badge { font-size: 12px; line-height: 1.5; padding: 3px 8px; color: #35634b; background: #eaf3ec }
+body .status-badge.warn { color: #8b5c28; background: #fff3df }
+body .status-badge.paused { color: #616b64; background: #eef1ee }
+body dialog { color: var(--ink-body); border-color: var(--line); border-radius: 16px }
+body dialog .dialog-title h2 { color: var(--ink-strong); font-size: 21px; font-weight: 600; letter-spacing: -.01em }
+body dialog label, body dialog p { line-height: 1.75 }
+body .analysis-title, body .analysis-coverage { color: var(--ink-muted); font-size: 13px }
+body .analysis-result { font-size: 15px; line-height: 1.85 }
+body .analysis-result h3 { font-size: 16px; color: var(--ink-strong) }
+body .analysis-brief { font-size: 17px; line-height: 1.8 }
+body .empty-state { text-align: center; color: var(--ink-muted) }
+body #empty-title { font-size: 16px; color: #52675a }
+body #empty-description { font-size: 14px; line-height: 1.8; color: var(--ink-muted) }
 
-/* 日期筛选面板：卡片化、留白、轻阴影，不再是一排裸控件 */
-.panel-toolbar.filter-row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding-bottom: 12px;
+@media (max-width: 1100px) {
+  body .article h2, body .article .article-title, body .library-entry h2 { font-size: 18px }
+  body .reader-content, body .feed-original.reader-content { font-size: 17px }
 }
-.range-panel {
-  display: grid;
-  width: 100%;
-  max-width: 500px;
-  gap: 12px;
-  margin: 2px 0 0;
-  padding: 14px 16px 15px;
-  border: 1px solid var(--rule-soft);
-  border-radius: 14px;
-  background: #fbfcfa;
-  box-shadow: 0 8px 22px rgba(24, 48, 34, .05);
-  animation: orlet-range-in .18s ease both;
-}
-@keyframes orlet-range-in {
-  from { opacity: 0; transform: translateY(-4px) }
-  to { opacity: 1; transform: none }
-}
-.range-presets { display: flex; gap: 6px; flex-wrap: wrap }
-.range-preset {
-  height: 30px;
-  padding: 0 13px;
-  border: 1px solid #e3e8e3;
-  border-radius: 999px;
-  background: #fff;
-  color: #4d5c53;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .01em;
-  cursor: pointer;
-  transition: border-color .15s ease, color .15s ease, background .15s ease;
-}
-.range-preset:hover { border-color: #b9cdbf; color: #2f5a45; background: #f6faf7 }
-.range-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: end;
-  gap: 8px;
-}
-.range-field { display: flex; flex-direction: column; gap: 5px; min-width: 0 }
-.range-field span { font-size: 11px; color: #8b978f; letter-spacing: .04em }
-.range-field input[type="date"] {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid #e3e8e3;
-  border-radius: 10px;
-  background: #fff;
-  color: #2b3730;
-  font-family: var(--type-num);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  text-align: left;
-}
-.range-field input[type="date"]:focus {
-  outline: none;
-  border-color: #8fb39f;
-  box-shadow: 0 0 0 3px #e8f1ec;
-}
-.range-dash { color: #b8c2bb; padding-bottom: 12px; font-size: 12px }
-.range-actions { display: flex; justify-content: flex-end; gap: 8px }
-.range-actions .primary, .range-actions .secondary { height: 34px; padding: 0 16px; border-radius: 9px; font-size: 12.5px }
 
 @media (max-width: 700px) {
-  .range-panel { padding: 12px 12px 13px; border-radius: 12px; gap: 11px }
-  .range-presets { gap: 5px }
-  .range-preset { height: 28px; padding: 0 11px; font-size: 11.5px }
-  /* 手机上日期框一列一个，避免两个原生控件挤在一起、宽度溢出 */
-  .range-fields { grid-template-columns: minmax(0, 1fr); gap: 9px }
-  /* 16px 是 iOS 不自动放大的下限，同时给原生日期控件留足高度 */
-  .range-field input[type="date"] { height: 46px; font-size: 16px; padding: 0 12px; line-height: 1.2 }
-  .range-dash { display: none }
-  .range-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-self: stretch }
-  .range-actions .primary, .range-actions .secondary { width: 100%; height: 44px; font-size: 14px }
-  .wx-tag { height: 19px; font-size: 10px; padding: 0 6px }
-  .article-links { gap: 14px }
-  .article-links button, .article-links a, .wx-actions button { font-size: 11.5px }
-  .reader-source-link { height: 26px; padding: 0 9px; font-size: 11.5px }
+  body { font-size: 15px }
+  body .workspace-search input, body dialog input, body dialog select,
+  body dialog textarea, body .library-toolbar select, body .range-field input[type="date"] { font-size: 16px }
+  body .sidebar .nav-item { font-size: 15px }
+  body #author-add { width: 44px; height: 44px }
+  body .content-tab { font-size: 15px }
+  body .content-tab .period-count { font-size: 11px }
+  body .workspace-platforms .platform-nav { font-size: 14px; padding-inline: 3px }
+  body .period-tab { font-size: 14px; padding-inline: 11px }
+  body #range-label { font-size: 11px }
+  body .feed-meta #read-all { font-size: 12px; min-height: 44px; padding-inline: 10px }
+  body .article h2, body .article .article-title, body .library-entry h2 { font-size: 18px; line-height: 1.65 }
+  body .article .wx-title { margin-top: 12px; -webkit-line-clamp: 3 }
+  body .wx-name { font-size: 14px }
+  body .wx-time, body .article-time { font-size: 12px }
+  body .wx-tag { display: none }
+  body .wx-foot { flex-wrap: wrap; gap: 0 12px }
+  body .article-links { gap: 14px }
+  body .wx-actions { gap: 4px; margin-left: auto }
+  body .article-links button, body .article-links a, body .wx-actions button,
+  body .article-actions button, body .article-actions a, body .xhs-actions button { min-height: 44px; min-width: 44px; font-size: 13px }
+  body .wx-actions button { padding-inline: 4px }
+  body #reader-title, body .reader-title { font-size: 25px; line-height: 1.55; letter-spacing: -.01em }
+  body .reader-content, body .feed-original.reader-content { font-size: 17px; line-height: 1.9; letter-spacing: .01em }
+  body .reader-content blockquote { padding: 12px 14px }
+  body .reader-toolbar .text-button, body .reader-toolbar #reader-source { font-size: 13px; min-height: 44px }
+  body .reader-pagination button { width: 44px; min-width: 44px; height: 44px }
+  body .reader-actions { flex-wrap: wrap }
+  body .reader-actions .reader-pagination { padding-left: 0 }
+  body .document-table { font-size: 15px }
+  body .range-preset { min-height: 44px; font-size: 13px }
+  body .range-field input[type="date"] { height: 46px }
+  body .range-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  body .library-card-foot button, body .library-toolbar button, body .source-actions button { min-height: 44px; font-size: 14px }
+  body .library-entry blockquote { font-size: 16px }
+  body dialog .dialog-title h2 { font-size: 20px }
+  body .analysis-dialog { border-radius: 20px 20px 0 0 }
 }
 
-
-/* iOS Safari：原生日期控件、按钮高度与字号单独校准 */
-@supports (-webkit-touch-callout: none) {
-  .range-field input[type="date"] {
-    height: 48px;
-    font-size: 16px;
-    padding: 0 14px;
-    border-radius: 11px;
-  }
-  .range-actions .primary,
-  .range-actions .secondary { height: 46px; font-size: 14.5px }
-  .range-preset { height: 32px; padding: 0 14px; font-size: 12.5px }
-  .range-panel { padding: 14px 14px 15px }
-  .feed-meta { min-height: 36px }
-  .feed-meta #read-all { height: 32px; padding: 0 14px; font-size: 12.5px }
-}
-
-/* 超窄屏（iPhone SE / 320px 级） */
 @media (max-width: 360px) {
-  .range-presets { gap: 6px }
-  .range-preset { padding: 0 10px; font-size: 11.5px }
-  .range-field input[type="date"] { font-size: 15px }
-  .range-actions .primary, .range-actions .secondary { font-size: 13px }
-  .feed-meta #read-all { padding: 0 10px; font-size: 11px }
+  body .wx-foot { align-items: flex-start }
+  body .wx-foot .article-links { flex-basis: 100% }
+  body .wx-foot .wx-actions { margin-left: 0; gap: 12px }
+  body #reader-title { font-size: 24px }
 }
-/* 移动端基础：禁止横屏字号膨胀、去掉点击 300ms 延迟 */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100% }
-button, .range-preset, #read-all, a { touch-action: manipulation }
+
+@media (prefers-reduced-motion: reduce) {
+  body .range-panel, body .article, body .author-nav, body .nav-item { animation: none; transition: none }
+}
