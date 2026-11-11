@@ -130,7 +130,7 @@ main, .monitor-mode main { width: 100%; max-width: 1180px; padding: 34px 48px 80
 .feed-group:last-child .article:last-child { border-bottom: 0; border-radius: 0 0 16px 16px }
 .article.is-read, .article.wechat-card.is-read { background: transparent; opacity: 1 }
 .article:hover, .article.wechat-card:hover { transform: none; border-color: #eeeee8; box-shadow: none; background: #fcfbf8 }
-.wx-head { align-items: center; gap: 9px; margin: 0; min-height: 28px }
+.wx-head { position: relative; align-items: center; gap: 9px; margin: 0; min-height: 28px; padding-right: 14px }
 .wx-avatar { width: 26px; height: 26px; flex-basis: 26px; border-radius: 8px; background-color: #edf0eb }
 .wx-avatar .avatar-letter { font-size: 12px; font-weight: 500; color: #738270 }
 .wx-byline { align-items: center; gap: 8px; min-width: 0; flex-wrap: nowrap }
@@ -138,6 +138,7 @@ main, .monitor-mode main { width: 100%; max-width: 1180px; padding: 34px 48px 80
 .wx-tag { font-size: 10px; color: #7c837d; background: #f3f4f0; border: 0; padding: 2px 6px; border-radius: 4px; line-height: 1.4 }
 .wx-time, .article-time { font-family: var(--type-num); color: #68756c; font-size: 12px; line-height: 1.5; white-space: nowrap }
 .unread-dot { background: #b7835b; width: 5px; height: 5px }
+.wx-head .unread-dot { position: absolute; right: 0; margin-left: 0 }
 .article h2, .article .article-title, .article .wx-title { color: #252d2e; font-size: 20px; font-weight: 600; line-height: 1.6; letter-spacing: -.015em; text-wrap: pretty }
 .article .wx-title { margin: 13px 0 12px; -webkit-line-clamp: 3 }
 .wx-title .article-title { display: block; width: 100%; text-align: left; padding: 0; font: inherit; color: inherit; cursor: pointer }
