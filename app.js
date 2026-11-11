@@ -224,7 +224,7 @@ function wechatCardHtml(a){
   const avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase();
   const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">微信公众号</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
   const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}">${esc(articleTitle(a))}</button></h2>`;
-  const links=documentArchiveEnabled()||aiAnalysisEnabled()?`<div class="article-links">${documentEntryHtml(a)}${analysisEntryHtml(a)}</div>`:'';
+  const links=aiAnalysisEnabled()?`<div class="article-links">${analysisEntryHtml(a)}</div>`:'';
   const foot=`<div class="wx-foot">${links}<div class="wx-actions"><button data-star="${a.id}" class="${a.starred?'is-starred':''}" aria-label="${a.starred?'取消收藏':'收藏'}">${a.starred?'★ 已收藏':'☆ 收藏'}</button><button data-read="${a.id}">${a.is_read?'标为未读':'标为已读'}</button></div></div>`;
   return `<article class="article wechat-card ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${head}${title}${foot}</article>`;
 }
@@ -383,7 +383,7 @@ function updateNavigation(){
   $('#content-controls').hidden=reading||['sources','activity'].includes(state.view);
   $('#feed-filters').hidden=reading||library||['sources','activity'].includes(state.view);
   $('#range-tab').setAttribute('aria-expanded',String(!!state.rangeOpen));
-  if($('#workspace-platforms'))$('#workspace-platforms').hidden=reading||library||state.view==='activity';
+  if($('#workspace-platforms'))$('#workspace-platforms').hidden=reading||library||state.view==='activity'||!!source&&state.view!=='sources';
   $('#page-title').hidden=reading||!source&&!['sources','activity'].includes(state.view)||library;$('#reader-view').hidden=!reading;
   $('#feed-view').hidden=reading||library||['sources','activity'].includes(state.view);$('#sources-view').hidden=reading||state.view!=='sources';$('#activity-view').hidden=reading||state.view!=='activity';
   const monitor=state.view==='sources',search=$('#search');
@@ -400,14 +400,16 @@ async function periodArticlesPage(offset,snapshot,request,restart=false,signal=n
   // A finite scan budget keeps sparse categories responsive. Load more resumes
   // the same source offset, even when a batch has no matching articles.
   for(let pageNumber=0;!cache.complete&&cache.items.length<offset+40&&pageNumber<20;pageNumber++){
-    const page=await api('/articles?'+articleParams(cache.next,cache.snapshot),signal?{signal}:{});if(request!==articleRequest)return null;
+    const params=articleParams(cache.next,cache.snapshot);params.set('pagination','cursor');if(cache.nextCursor)params.set('pageCursor',cache.nextCursor);
+    const page=await api('/articles?'+params,signal?{signal}:{});if(request!==articleRequest)return null;
     scopedReadSupported=page.scopedReadSupported===true;
     if(cache.snapshot===null)cache.snapshot=page.snapshot??null;
     if(page.readingPeriodApplied===true){cache.serverFiltered=true;cache.total=Number(page.total)||0;}
     let added=0;
     for(const item of page.items){if(cache.seen.has(item.id))continue;cache.seen.add(item.id);added++;if(visiblePlatforms.has(item.platform))cache.counts[articlePeriod(item)==='today'?'today':'history']++;if(matchingArticle(item))cache.items.push(item);}
     if(page.items.length&&!added)throw new Error('内容分页暂不可用，请重试');
-    cache.next+=page.items.length;cache.complete=!page.items.length||cache.next>=Number(page.total);
+    cache.next+=page.items.length;cache.nextCursor=page.nextCursor;
+    cache.complete=!page.items.length||('nextCursor'in page?!page.hasMore:cache.next>=Number(page.total));
   }
   const items=cache.items.slice(offset,offset+40),nextOffset=offset+items.length;
   const fullyFiltered=cache.serverFiltered&&!['unread','starred'].includes(state.view);
@@ -450,10 +452,11 @@ function scheduleFeedPrefetch(){
     const controller=new AbortController(),revision=feedCacheRevision;prefetchController=controller;
     const timeout=setTimeout(()=>controller.abort(),12000);
     try{
-      const page=await api('/articles?'+articleParams(0,null,scope),{signal:controller.signal,priority:'low'});
+      const params=articleParams(0,null,scope);params.set('pagination','cursor');
+      const page=await api('/articles?'+params,{signal:controller.signal,priority:'low'});
       if(controller.signal.aborted||page.readingPeriodApplied!==true||origin!==feedViewKey()||revision!==feedCacheRevision)return;
-      const items=page.items.filter(item=>matchesScope(item,scope)),total=Number(page.total)||0,complete=page.items.length>=total;
-      const pageCache={key,snapshot:page.snapshot??null,items:items.slice(),seen:new Set(page.items.map(item=>item.id)),next:page.items.length,complete,counts:{today:0,history:0},serverFiltered:true,total};pageCache.counts[scope.period]=items.length;
+      const items=page.items.filter(item=>matchesScope(item,scope)),total=Number(page.total)||0,complete='nextCursor'in page?!page.hasMore:page.items.length>=total;
+      const pageCache={key,snapshot:page.snapshot??null,items:items.slice(),seen:new Set(page.items.map(item=>item.id)),next:page.items.length,nextCursor:page.nextCursor,complete,counts:{today:0,history:0},serverFiltered:true,total};pageCache.counts[scope.period]=items.length;
       const fullyFiltered=!['unread','starred'].includes(scope.view);
       feedViewCache.set(key,{scope,articles:items.slice().sort(compareArticles),total:fullyFiltered?total:items.length,snapshot:pageCache.snapshot,nextOffset:items.length,hasMore:!complete,totalKnown:fullyFiltered||complete,periodDay:beijingDay(Date.now()),fetchedAt:Date.now(),pageCache});
       while(feedViewCache.size>12)feedViewCache.delete(feedViewCache.keys().next().value);
@@ -531,11 +534,20 @@ function receiveUpdates(items){
 async function refreshLocalMetadata(){
   if(metadataBusy||!state.loaded||state.readerId!==null||libraryView()||['sources','activity'].includes(state.view)||applyingUpdates)return;
   if(state.periodDay!==beijingDay(Date.now())){const anchor=scrollAnchor();await refreshArticles();restoreAnchor(anchor);return;}
-  metadataBusy=true;const request=articleRequest,viewKey=JSON.stringify([state.view,state.platform,state.source,normalizeTab(state.tab),state.range,!!state.unreadOnly,state.q]);
-  try{const data=await api('/articles?'+articleParams(0));if(request!==articleRequest||viewKey!==JSON.stringify([state.view,state.platform,state.source,state.period,state.q]))return;
-    // A latest-page read also provides a conservative fallback when /updates is
-    // not available yet. It never replaces the current pagination snapshot.
-    const items=data.items.filter(item=>state.articles.some(a=>a.id===item.id)||state.snapshot===null||Number(item.id)>Number(state.snapshot));receiveUpdates(items);
+  const ids=state.articles.map(item=>item.id);if(!ids.length)return;
+  metadataBusy=true;const request=articleRequest,viewKey=feedViewKey(),revision=feedCacheRevision;
+  try{
+    const batches=[];for(let i=0;i<ids.length;i+=200)batches.push(ids.slice(i,i+200));
+    const pages=await Promise.all(batches.map(batch=>api('/articles?'+new URLSearchParams({ids:batch.join(',')}))));
+    if(request!==articleRequest||viewKey!==feedViewKey()||revision!==feedCacheRevision||state.readerId!==null)return;
+    const metadata=new Map(pages.flatMap(page=>page.items).map(item=>[item.id,item]));
+    const anchor=scrollAnchor();let changed=false;
+    state.articles=state.articles.map(item=>{
+      const incoming=metadata.get(item.id);if(!incoming||pendingArticleActions.has(item.id))return item;
+      if(item.is_read===incoming.is_read&&item.starred===incoming.starred&&(item.favoriteDocumentId??null)===(incoming.favoriteDocumentId??null))return item;
+      const merged={...item,is_read:incoming.is_read,starred:incoming.starred,favoriteDocumentId:incoming.favoriteDocumentId??null};cacheArticleMetadata(merged);changed=true;return merged;
+    });
+    if(changed){const count=state.articles.length;state.articles=state.articles.filter(matchingArticle);state.total=Math.max(0,state.total-(count-state.articles.length));renderFeedState();renderPeriodCounts();rememberFeedView();restoreAnchor(anchor);}
   }finally{metadataBusy=false;}
 }
 async function pollUpdates(){

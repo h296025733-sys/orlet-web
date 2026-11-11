@@ -10,14 +10,18 @@
   if (globalThis.__orletQuoteOverlay) return;
   globalThis.__orletQuoteOverlay = true;
 
-  const STYLE_ID = 'orlet-quote-overlay-style';
   const MARK = 'orlet-quote-mark';
   const REFRESH_MS = 4000;
 
   // The styles live in quote-overlay.css: the local server sets style-src 'self',
   // so an injected <style> would be blocked there.
   function ensureStylesheet() {
-    if (document.querySelector('link[data-quote-overlay-style]')) return;
+    const stylesheet = new URL('quote-overlay.css', import.meta.url);
+    const existing = [...document.querySelectorAll('link[rel="stylesheet"]')].some(link => {
+      const url = new URL(link.href, document.baseURI);
+      return url.origin === stylesheet.origin && url.pathname === stylesheet.pathname;
+    });
+    if (existing) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = new URL('quote-overlay.css', import.meta.url).href;
@@ -30,21 +34,22 @@
   let quotes = [];
   let quotesAt = 0;
   let absorbed = false;
-  let applying = false;
+  let applied = null;
+  let contentDirty = true;
+  let selectionPending = false;
+  let documentIdentity = '';
+  let currentDocumentId = null;
+  let currentVersionId = null;
+  let documentRequest = 0;
+  let quotesLoading = null;
   let timer = null;
   let documentUrl = null;
   let lastArticleId = null;
 
-  function backendBase() {
-    try {
-      if (globalThis.orletBackend?.path) return null; // request() used instead
-    } catch {}
-    return '';
-  }
-
   async function requestJson(path) {
-    if (globalThis.orletBackend?.request) return globalThis.orletBackend.request(path);
-    const response = await fetch(path, { headers: { Accept: 'application/json' } });
+    const response = globalThis.orletBackend?.request
+      ? await globalThis.orletBackend.request(path)
+      : await fetch(path, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error('quotes ' + response.status);
     return response.json();
   }
@@ -53,6 +58,7 @@
   // directly. Only block positions are used, never the quoted text.
   async function loadQuotes() {
     if (absorbed) return;
+    const identity = documentIdentity;
     try {
       const collected = [];
       for (let offset = 0; offset < 500; offset += 100) {
@@ -62,7 +68,10 @@
         const total = Number(data?.total);
         if (!Number.isFinite(total) || collected.length >= total || !items.length) break;
       }
+      if (identity !== documentIdentity || absorbed) return;
       quotes = collected
+        .filter(item => !currentDocumentId || item.documentId === currentDocumentId)
+        .filter(item => !currentVersionId || !item.versionId || item.versionId === currentVersionId)
         .map(item => ({ id: item.id, anchor: item.anchor || item.range }))
         .filter(item => item.anchor?.start?.blockId && item.anchor?.end?.blockId);
       quotesAt = Date.now();
@@ -109,29 +118,41 @@
   function applyAll() {
     const container = document.getElementById('reader-content');
     if (!container || !container.childElementCount) return;
-    if (!quotes.length) { unwrap(container); return; }
-    applying = true;
+    const blocks = [...container.querySelectorAll('[data-document-block]')];
+    const key = JSON.stringify([documentIdentity, quotes.map(quote => quote.anchor)]);
+    if (!contentDirty && applied?.container === container && applied.key === key &&
+        applied.blocks.length === blocks.length && blocks.every((block, index) => block === applied.blocks[index])) return;
+    const selection = globalThis.getSelection?.();
+    if (selection && !selection.isCollapsed && selection.rangeCount &&
+        selection.getRangeAt(0).intersectsNode(container)) {
+      selectionPending = true;
+      return;
+    }
+    selectionPending = false;
+    // MutationObserver callbacks run after this stack. Disconnect while changing
+    // our own marks so those changes cannot schedule another render.
+    observer.disconnect();
     try {
       unwrap(container);
-      const blocks = [...container.querySelectorAll('[data-document-block]')];
-      if (!blocks.length) return;
       const index = new Map();
       blocks.forEach((node, position) => index.set(node.dataset.documentBlock, position));
       for (const quote of quotes) {
         const startBlock = index.get(quote.anchor.start.blockId);
         const endBlock = index.get(quote.anchor.end.blockId);
         if (startBlock === undefined || endBlock === undefined) continue;
-        if (blocks[startBlock].querySelector('li')) continue; // list offsets differ
+        if (blocks[startBlock].querySelector('li')) continue;
         for (let position = startBlock; position <= endBlock; position++) {
           const node = blocks[position];
-          const length = node.textContent ? node.textContent.length : 0;
+          const length = node.textContent?.length || 0;
           const from = position === startBlock ? Number(quote.anchor.start.offset) || 0 : 0;
-          const to = position === endBlock ? Number(quote.anchor.end.offset) || length : length;
+          const to = position === endBlock ? Number(quote.anchor.end.offset) : length;
           wrap(node, Math.max(0, from), Math.min(length, to));
         }
       }
+      applied = { container, blocks, key };
+      contentDirty = false;
     } finally {
-      applying = false;
+      observer.observe(document.body, { childList: true, characterData: true, subtree: true });
     }
   }
 
@@ -141,76 +162,86 @@
   }
 
   async function refresh({ force = false } = {}) {
-    if (force || Date.now() - quotesAt > REFRESH_MS) await loadQuotes();
+    const container = document.getElementById('reader-content');
+    if (document.hidden || !container?.childElementCount) return;
+    if (!absorbed && (force || Date.now() - quotesAt > REFRESH_MS)) {
+      quotesLoading ??= loadQuotes().finally(() => { quotesLoading = null; });
+      await quotesLoading;
+    }
     schedule(0);
   }
 
   const observer = new MutationObserver(mutations => {
-    if (applying) return;
     for (const mutation of mutations) {
-      const target = mutation.target;
-      if (!(target instanceof Element)) continue;
-      if (target.id === 'reader-content' || target.closest?.('#reader-content')) { schedule(); return; }
+      const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+      if (target?.id === 'reader-content' || target?.closest?.('#reader-content')) {
+        contentDirty = true;
+        schedule();
+        return;
+      }
     }
   });
 
   function absorb(payload) {
-    if (!payload || !Array.isArray(payload.quoteRanges)) return;
-    absorbed = true;
-    if (Number.isFinite(Number(payload.articleId))) lastArticleId = Number(payload.articleId);
-    quotes = payload.quoteRanges
+    const document = payload?.document || payload;
+    if (!document) return;
+    currentDocumentId = document.documentId || payload.documentId || null;
+    currentVersionId = document.versionId || payload.versionId || null;
+    documentIdentity = JSON.stringify([documentUrl, currentDocumentId, currentVersionId]);
+    if (Number.isFinite(Number(document.articleId))) lastArticleId = Number(document.articleId);
+    absorbed = Array.isArray(document.quoteRanges);
+    if (!absorbed) { quotes = []; quotesAt = 0; void refresh({ force: true }); return; }
+    quotes = document.quoteRanges
       .filter(anchor => anchor?.start?.blockId && anchor?.end?.blockId)
       .map(anchor => ({ anchor }));
     quotesAt = Date.now();
     schedule(0);
   }
 
-  // The document response already carries the quote ranges for its own document,
-  // so the reader needs no extra request (and works from the public frontend too).
-  function watchDocumentResponses() {
-    const originalFetch = globalThis.fetch;
-    if (typeof originalFetch === 'function') {
-      globalThis.fetch = function patchedFetch(input, init) {
-        const result = originalFetch.apply(this, arguments);
-        try {
-          const url = typeof input === 'string' ? input : input?.url || '';
-          if (/\/api\/(articles\/\d+|documents\/[a-f0-9-]{36})\/document(\?|$)/.test(url)) { documentUrl = url; result.then(response => {
-            response.clone().json().then(absorb).catch(() => {});
-          }, () => {}); }
-        } catch {}
-        return result;
-      };
-    }
-    const backend = globalThis.orletBackend;
-    if (backend && typeof backend.request === 'function' && !backend.__quoteOverlay) {
-      const original = backend.request;
-      backend.request = async function patchedRequest(...args) {
-        const value = await original.apply(this, args);
-        try {
-          const target = String(args[0] || '');
-          if (/\/document(\?|$)/.test(target) && value && typeof value.clone === 'function') {
-            documentUrl = target;
-            value.clone().json().then(absorb).catch(() => {});
-          }
-        } catch {}
-        return value;
-      };
-      backend.__quoteOverlay = true;
+  function observeRequest(target, method, result) {
+    const isDocument = method === 'GET' && /\/api\/(?:articles\/\d+\/document|documents\/[a-f0-9-]{36}\/document|library\/(?:articles|quotes)\/[a-zA-Z0-9-]+)(?:\?|$)/.test(target);
+    const quoteChanged = method === 'POST' && /\/api\/(?:articles\/\d+|documents\/[a-f0-9-]{36})\/quotes(?:\?|$)/.test(target)
+      || method === 'DELETE' && /\/api\/library\/quotes\/[a-zA-Z0-9-]+(?:\?|$)/.test(target);
+    if (isDocument) {
+      const request = ++documentRequest;
+      documentUrl = target;
+      result.then(response => {
+        if (!response.ok) return;
+        response.clone().json().then(payload => {
+          if (request === documentRequest) absorb(payload);
+        }).catch(() => {});
+      }, () => {});
+    } else if (quoteChanged) {
+      result.then(response => { if (response.ok) void refreshFromDocument(); }, () => {});
     }
   }
 
-  // A new or cancelled quote changes the document's ranges; re-read the same
-  // document endpoint instead of guessing.
+  // Observe the same transport as the app. Reading a document supplies its own
+  // ranges, and successful quote writes refresh only that document.
+  function watchDocumentResponses() {
+    const backend = globalThis.orletBackend;
+    if (backend?.request && !backend.__quoteOverlay) {
+      const original = backend.request;
+      backend.request = function patchedRequest(...args) {
+        const result = original.apply(this, args);
+        observeRequest(String(args[0] || ''), (args[1]?.method || 'GET').toUpperCase(), result);
+        return result;
+      };
+      backend.__quoteOverlay = true;
+    } else if (!backend && typeof globalThis.fetch === 'function') {
+      const original = globalThis.fetch;
+      globalThis.fetch = function patchedFetch(input, init) {
+        const result = original.apply(this, arguments);
+        observeRequest(typeof input === 'string' ? input : input?.url || '', (init?.method || input?.method || 'GET').toUpperCase(), result);
+        return result;
+      };
+    }
+  }
+
   async function refreshFromDocument() {
-    const target = documentUrl || (lastArticleId ? '/api/articles/' + lastArticleId + '/document' : null);
+    const target = documentUrl;
     if (!target) return;
-    try {
-      if (globalThis.orletBackend?.request) absorb(await globalThis.orletBackend.request(target));
-      else {
-        const response = await fetch(target, { headers: { Accept: 'application/json' } });
-        if (response.ok) absorb(await response.json());
-      }
-    } catch {}
+    try { await requestJson(target); } catch {}
   }
 
   // If the shared page landed on an offline banner (tunnel or backend restart),
@@ -228,7 +259,10 @@
       if (Date.now() - lastReload < 30000) return;
       try {
         if (globalThis.orletBackend?.refresh) await globalThis.orletBackend.refresh();
-        if (globalThis.orletBackend?.request) await globalThis.orletBackend.request('/api/health');
+        if (globalThis.orletBackend?.request) {
+          const response = await globalThis.orletBackend.request('/api/health');
+          if (!response.ok) return;
+        }
         else {
           const response = await fetch('/api/health', { headers: { Accept: 'application/json' } });
           if (!response.ok) return;
@@ -246,18 +280,15 @@
   function start() {
     watchDocumentResponses();
     watchConnection();
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
     refresh({ force: true });
     setInterval(() => {
       const container = document.getElementById('reader-content');
       if (container && container.childElementCount) refresh();
     }, REFRESH_MS);
-    document.addEventListener('click', event => {
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target) return;
-      if (target.closest('#quote-save,[data-quote-save],[data-quote-delete],[data-library-remove]')) { setTimeout(() => refreshFromDocument(), 700); return; }
-      if (target.closest('#library-list,#reader-content,#articles')) setTimeout(() => refreshFromDocument(), 1200);
-    }, true);
+    document.addEventListener('selectionchange', () => {
+      if (selectionPending) schedule();
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
