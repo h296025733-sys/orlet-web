@@ -346,15 +346,17 @@ dialog .dialog-actions { gap: 10px }
   .page-title #add-open { min-height: 44px; font-size: 13px; padding-inline: 12px }
   .feed-meta { min-height: 44px; margin: 0 0 8px; padding: 0; border: 0; gap: 8px }
   .feed-meta #read-all { min-height: 44px; font-size: 12px }
-  .article, .article.wechat-card, .article.xhs-card { padding: 16px 14px 14px }
+  .group-articles { gap: 10px }
+  .group-articles + .group-articles, .feed-group + .feed-group { margin-top: 10px }
+  .article, .article.wechat-card, .article.xhs-card { padding: 14px 14px 12px }
   .wx-head { gap: 8px; min-height: 27px }
   .wx-avatar { width: 28px; height: 28px; flex-basis: 28px }
   .wx-name { font-size: 13px; max-width: 12em }
   .wx-tag { display: none }
   .wx-time, .article-time { font-size: 12px }
-  .article h2, .article .article-title, .article .wx-title { font-size: 20px; font-weight: 600; line-height: 1.5; letter-spacing: 0 }
-  .article .wx-title { margin: 9px 0 6px }
-  .wx-foot { gap: 8px; margin-top: 10px; padding-top: 10px }
+  .article h2, .article .article-title, .article .wx-title { font-size: 18px; font-weight: 600; line-height: 1.5; letter-spacing: 0 }
+  .article .wx-title { margin: 8px 0 6px }
+  .wx-foot { gap: 8px; margin-top: 8px; padding-top: 8px }
   .wx-foot .article-links, .wx-foot .wx-actions { gap: 8px }
   .article-links button, .article-links a, .wx-actions button, .xhs-actions button, .article-actions button, .article-actions a { min-height: 44px; min-width: 44px; font-size: 14px }
   .wx-foot button, .wx-foot a { width: auto; padding: 6px 9px; white-space: nowrap }
