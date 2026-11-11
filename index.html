@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./reader-shell.css?v=cb1f3f42efe4">
   <link rel="stylesheet" href="./typography.css?v=cb6f7b08e07f">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
-  <link rel="stylesheet" href="./filter-bar.css?v=37964e54a6bb">
+  <link rel="stylesheet" href="./filter-bar.css?v=8d0309eced42">
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=332512484a5d"></script>
@@ -64,8 +64,8 @@
     <main>
       <div class="workspace-heading">
       <div id="content-controls" class="content-controls"><nav class="content-tabs" aria-label="内容视图">
-        <button id="content-all" class="content-tab active" data-content="all" aria-pressed="true">全部</button>
-        <button id="unread-chip" class="content-tab" data-content="unread" aria-pressed="false">未读<span class="period-count" id="period-count-unread"></span></button>
+        <button id="content-all" class="content-tab active" data-content="all" aria-pressed="true"><svg class="button-icon" aria-hidden="true"><use href="#icon-feed"/></svg>全部</button>
+        <button id="unread-chip" class="content-tab" data-content="unread" aria-pressed="false"><svg class="button-icon" aria-hidden="true"><use href="#icon-unread"/></svg>未读<span class="period-count" id="period-count-unread"></span></button>
         <button id="content-saved" class="content-tab" data-content="starred" aria-pressed="false"><svg class="button-icon" aria-hidden="true"><use href="#icon-star"/></svg>收藏</button>
       </nav></div>
       <div class="page-title" id="page-title">
