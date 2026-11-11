@@ -1,16 +1,230 @@
-/* Filter row: 今天 / 日期范围 / 未读, plus the scoped mark-read button. */
-.filter-row{flex-wrap:wrap;gap:10px}
-.range-panel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.range-panel input[type="date"]{height:34px;padding:0 9px;border:1px solid #e2e7e9;border-radius:8px;background:#fff;color:#33413a;font-size:12px}
-.range-dash{color:#8b968f;font-size:12px}
-.period-tab.unread-chip.active{background:#315b49;color:#fff}
-.period-tab.unread-chip.active .period-count{background:#ffffff2e;color:#fff}
-.feed-meta{display:flex;align-items:center;gap:10px}
-.feed-meta #read-all{margin-left:auto}
-.feed-meta .timezone-label{margin:0}
-@media (max-width:700px){
-  .range-panel{width:100%}
-  .range-panel input[type="date"]{flex:1 1 42%;min-width:0}
-  .feed-meta{font-size:11px;gap:8px}
-  .feed-meta #read-all{font-size:11px}
+/* Workspace layout. Loaded last so every breakpoint shares one navigation model. */
+:root {
+  --sidebar-width: 240px;
+  --canvas: #f5f6f3;
+  --sidebar: #fafbf8;
+  --line: #e3e8e0;
+  --accent: #315b49;
+  --accent-soft: #eaf1e9;
+  --topbar-height: 68px;
+}
+html { scroll-padding-top: calc(var(--topbar-height) + 90px) }
+.topbar { height: 68px; min-height: 68px; padding: 0 28px; gap: 24px; border-bottom: 1px solid var(--line); background: #fff }
+.brand { flex: 0 0 184px; padding: 0; gap: 10px; font-size: 23px }
+.brand img { width: 29px; height: 29px }
+.breadcrumbs { display: none }
+.top-actions { display: flex; align-items: center; flex: 1; gap: 18px; margin-left: 0 }
+.workspace-search { width: min(440px, 45vw); max-width: 440px; min-width: 180px; height: 40px; padding: 0 13px; background: #f4f6f2; border: 1px solid #e9ece5; border-radius: 10px }
+.workspace-search input { font-size: 14px }
+.connection-control { margin-left: auto; min-height: 44px; gap: 8px; padding: 8px; color: #6b7d70 }
+.connection-control .button-icon { display: block; width: 18px; height: 18px }
+.mobile-nav-toggle { display: none }
+
+.sidebar, .monitor-mode .sidebar {
+  display: flex;
+  inset: var(--topbar-height) auto 0 0;
+  width: var(--sidebar-width);
+  padding: 20px 14px 16px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--sidebar);
+  box-shadow: none;
+}
+.sidebar-heading { display: none }
+.sidebar-scroll { display: flex; flex: 1; min-height: 0; margin: 0; padding: 0; overscroll-behavior: contain }
+.reading-nav { flex-shrink: 0; padding: 0 0 18px; border-bottom: 1px solid var(--line) }
+.nav-item { min-height: 46px; height: auto; margin: 3px 0; padding: 11px 14px; gap: 12px; font-size: 14px; color: #657166; border-radius: 10px }
+.nav-item:hover { background: #eff3ec }
+.nav-item.active { background: #315b49; color: #fff; box-shadow: 0 2px 4px #244c3110 }
+.nav-item.active .nav-count { color: #d4e3d6 }
+.nav-section[aria-label="作者"] { margin-top: 22px; min-height: 0 }
+.nav-section-heading { padding: 0 12px 10px; font-size: 11px; color: #788476; letter-spacing: .04em }
+#author-add { width: 30px; height: 30px; color: #315b49; border-color: #dae4d7 }
+.author-nav { grid-template-columns: 32px minmax(0, 1fr); min-height: 57px; padding: 9px 10px; gap: 0 10px; border-radius: 10px }
+.author-nav-avatar { width: 32px; height: 32px; min-width: 32px }
+.author-nav-name { font-size: 13px; line-height: 20px }
+.author-platform { font-size: 10px; line-height: 17px; color: #889184 }
+.author-nav.active { color: #2c5540; background: #e6eee2 }
+.author-nav.active .author-platform { color: #648260 }
+.manage-nav { flex-shrink: 0; padding-top: 12px; margin-top: 14px; background: var(--sidebar); border-top: 1px solid var(--line) }
+.manage-nav .nav-item { min-height: 42px; font-size: 13px }
+
+.shell, .reading-mode .shell { margin-left: var(--sidebar-width); padding-top: var(--topbar-height); min-width: 0 }
+main, .monitor-mode main { width: 100%; max-width: 1100px; padding: 20px 40px 80px; margin: 0 auto }
+.content-controls {
+  position: sticky;
+  top: var(--topbar-height);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  margin: -8px 0 0;
+  background: var(--canvas);
+}
+.content-tabs { display: flex; gap: 5px; padding: 5px; border-radius: 13px; background: #e9eee5; width: fit-content; max-width: 100% }
+.content-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 100px;
+  min-height: 44px;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #677363;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.content-tab .button-icon { width: 17px; height: 17px }
+.content-tab:hover { background: #f5f8f1; color: #315b49 }
+.content-tab.active, .content-tab[aria-pressed="true"] { background: #fff; color: #284d39; box-shadow: 0 1px 5px #294c3212 }
+.content-tab .period-count { margin: 0; padding: 1px 6px; background: #dce8d5; color: #476543; border-radius: 5px; font-size: 11px }
+.workspace-platforms, .monitor-mode .workspace-platforms {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 4px 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-platforms .platform-nav { min-width: 64px; min-height: 40px; height: auto; padding: 7px 15px; font-size: 13px; color: #7b8476; border-radius: 9px }
+.workspace-platforms .platform-nav.active { background: #e5ede0; color: #315b49; box-shadow: none }
+.page-title { align-items: center; margin: 4px 0 22px; gap: 16px }
+.page-title h1, #page-heading { font-size: clamp(23px, 2.1vw, 28px); font-weight: 600; line-height: 1.35; color: #233d2c; letter-spacing: -.025em }
+.page-subtitle { display: none }
+.page-title #add-open { background: #315b49; border-color: #315b49; min-height: 42px; height: auto; border-radius: 9px; white-space: nowrap }
+.page-title #add-open:hover { background: #244a38 }
+
+#feed-filters { position: relative; display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; padding: 0; margin: 0 0 6px }
+.period-tabs { display: flex; width: auto; min-width: 0; gap: 4px; padding: 0; background: transparent; border: 0; border-radius: 0 }
+.period-tab { min-width: 72px; min-height: 40px; padding: 8px 13px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #7b8476; font-size: 13px }
+.period-tab.active { color: #315b49; background: #fff; border-color: #dce5d7; box-shadow: 0 1px 2px #244a3806 }
+.period-tab:hover { background: #eef3e9; color: #315b49 }
+#range-label { background: transparent; color: inherit; font-size: 11px; padding: 0; margin-left: 5px }
+.range-panel { flex: 1 0 100%; width: 100%; max-width: 480px; padding: 18px; margin: 0; border: 1px solid #dce5d7; border-radius: 13px; box-shadow: 0 6px 18px #294c3208; background: #fff }
+.range-presets { display: flex; gap: 7px; flex-wrap: wrap }
+.range-preset { min-height: 36px; height: auto; padding: 7px 12px; border-radius: 8px; color: #5d7256 }
+.range-fields { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px }
+.range-field input[type="date"] { min-width: 0; height: 42px; font-size: 14px }
+.range-actions .primary, .range-actions .secondary { min-height: 40px; height: auto }
+.range-actions .primary { background: #315b49; border-color: #315b49 }
+.feed-meta { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 0 6px; margin-bottom: 6px; color: #7e8c77 }
+.feed-meta #read-all { flex: 0 1 auto; width: auto; max-width: 100%; height: auto; margin-left: auto; min-height: 36px; padding: 7px 8px; font-size: 12px; line-height: 1.5; white-space: normal; overflow: visible; color: #617758 }
+.feed-meta .timezone-label { display: none }
+.group-heading { display: none }
+.group-heading::before { display: none }
+.group-heading::after { max-width: none; background: var(--line) }
+.group-heading h2 { color: #6d8064; letter-spacing: 0; font-size: 12px }
+.group-heading span { color: #8f9a88; font-size: 11px }
+.group-articles { gap: 14px }
+.article, .article.wechat-card { border-color: #e2e8dd; border-radius: 14px; padding: 22px 24px 18px; box-shadow: 0 2px 5px #283e2103 }
+.article:hover { transform: none; border-color: #bdcfb4; box-shadow: 0 4px 14px #283e2105 }
+.wx-title { line-height: 1.6; text-wrap: pretty }
+.wx-foot { margin-top: 16px }
+.wx-actions button, .article-actions button { min-height: 36px }
+.library-toolbar { gap: 12px; padding: 4px 0 16px; margin-bottom: 0 }
+.library-card { border-color: #e2e8dd }
+.library-entry h2 { line-height: 1.6 }
+.monitor-browser { grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.5fr); gap: 18px }
+.monitor-items { max-height: calc(100dvh - 310px) }
+.monitor-item.active { background: #315b49 }
+.monitor-item.active .monitor-item-meta { color: #d4e3d1 }
+.monitor-detail { padding: 24px; border-color: #e2e8dd }
+.monitor-detail .source-name { font-size: 21px }
+.reader-toolbar { top: var(--topbar-height) }
+
+@media (max-width: 1100px) and (min-width: 701px) {
+  :root { --sidebar-width: 216px }
+  .topbar { padding: 0 22px; gap: 20px }
+  .brand { flex-basis: 174px }
+  main, .monitor-mode main { padding: 18px 26px 64px }
+  .monitor-browser { grid-template-columns: minmax(0, 1fr) }
+  .monitor-items { display: flex; gap: 8px; max-height: none; overflow-x: auto }
+  .monitor-item { flex: 0 0 185px; width: 185px }
+}
+
+@media (max-width: 700px) {
+  :root { --sidebar-width: 280px }
+  html, body { width: 100%; max-width: 100%; overflow-x: clip }
+  body.nav-open { overflow: hidden }
+  .topbar { height: auto; min-height: 0; gap: 8px 10px; padding: max(8px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left)); flex-wrap: wrap }
+  .mobile-nav-toggle, .monitor-mode .mobile-nav-toggle { display: grid; order: 0; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin: 0; border-radius: 10px; background: #f1f5ed; color: #315b49 }
+  .brand { order: 1; flex: 1 1 auto; width: auto; font-size: 22px; gap: 8px }
+  .brand img { width: 26px; height: 26px }
+  .top-actions { display: contents }
+  .connection-control { display: flex; order: 2; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; margin: 0; justify-content: center; border: 0 }
+  .connection-control #connection-title, .connection-control .connection-dot { display: none }
+  .connection-control .button-icon { display: block; width: 20px; height: 20px; margin: 0 }
+  .workspace-search { display: flex; order: 3; flex: 1 0 100%; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 12px; border-radius: 10px }
+  .workspace-search input { font-size: 16px }
+  .search-shortcut { display: none }
+  .shell, .reading-mode .shell { margin-left: 0; padding-top: var(--topbar-height, 114px) }
+  .sidebar, .monitor-mode .sidebar { top: 0; bottom: 0; left: 0; width: min(310px, calc(100vw - 48px)); z-index: 60; padding: max(14px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)); transform: translateX(-100%); transition: transform .18s ease; border-radius: 0; box-shadow: none }
+  .sidebar.is-open { transform: translateX(0); box-shadow: 12px 0 40px #1f3d2424 }
+  .sidebar-heading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; min-height: 44px; margin: 0 0 16px; padding-left: 13px; font-size: 20px; font-weight: 600; color: #315b49 }
+  #nav-close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 10px; background: #eaf0e5; color: #4d6544; font-size: 24px }
+  .nav-backdrop { position: fixed; inset: 0; width: 100%; height: 100dvh; z-index: 59; background: #22362652; backdrop-filter: blur(2px) }
+  .sidebar .nav-item { min-height: 48px; font-size: 15px }
+  .author-nav { min-height: 60px; padding: 10px 12px }
+  .author-nav-name { font-size: 14px }
+  #author-add { width: 36px; height: 36px }
+  main, .monitor-mode main { max-width: 100%; padding: 14px max(14px, env(safe-area-inset-right)) max(44px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)) }
+  .content-controls { padding: 7px 0; margin: -5px 0 0; top: var(--topbar-height, 114px) }
+  .content-tabs { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px }
+  .content-tab { min-width: 0; min-height: 44px; padding: 8px 6px; gap: 5px; font-size: 14px }
+  .content-tab .period-count { padding: 1px 5px; font-size: 10px }
+  .workspace-platforms, .monitor-mode .workspace-platforms { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 2px 0 7px; margin: 0 0 10px }
+  .workspace-platforms .platform-nav { width: 100%; min-width: 0; min-height: 44px; padding: 8px 3px; font-size: 13px }
+  .page-title { margin-bottom: 15px; gap: 10px }
+  .page-title h1, #page-heading { font-size: 23px; line-height: 1.4; overflow-wrap: anywhere }
+  .page-title #add-open { min-height: 44px; padding: 8px 11px; font-size: 12px }
+  #feed-filters { gap: 10px; margin-bottom: 2px }
+  .period-tabs { width: 100%; gap: 4px; flex-wrap: wrap }
+  .period-tab { min-width: 0; min-height: 44px; padding: 8px 12px; font-size: 13px }
+  #range-label { font-size: 10px }
+  .range-panel { max-width: none; padding: 14px; border-radius: 12px }
+  .range-preset { min-height: 44px; height: auto; font-size: 12px; padding: 8px 12px }
+  .range-fields { grid-template-columns: minmax(0, 1fr); gap: 10px }
+  .range-dash { display: none }
+  .range-field input[type="date"] { height: 46px; font-size: 16px; min-width: 0; width: 100% }
+  .range-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+  .range-actions .primary, .range-actions .secondary { min-height: 44px; font-size: 14px }
+  .feed-meta { min-height: 44px; padding: 0; gap: 7px; margin-bottom: 6px }
+  .feed-meta #read-all { min-height: 44px; height: auto; width: auto; padding: 8px; font-size: 11px; white-space: normal }
+  .feed-meta .timezone-label { font-size: 10px }
+  .group-heading { padding-bottom: 10px }
+  .group-articles { gap: 12px }
+  .article, .article.wechat-card { padding: 17px 16px 12px; border-radius: 13px }
+  .wx-title { font-size: 17px; line-height: 1.6; margin-top: 12px }
+  .wx-head { gap: 9px }
+  .wx-name { font-size: 13px; max-width: none }
+  .wx-avatar { width: 34px; height: 34px; flex-basis: 34px }
+  .wx-foot { margin-top: 11px }
+  .wx-actions { gap: 9px }
+  .wx-actions button, .wx-open, .article-actions button, .article-actions a { min-height: 44px; font-size: 12px }
+  .library-toolbar { gap: 9px; padding-bottom: 14px }
+  .library-kinds { flex: 1 0 100% }
+  .library-kinds button { min-height: 44px; padding: 9px; font-size: 13px }
+  .library-toolbar select { flex: 1; min-width: 0; max-width: none; min-height: 44px; font-size: 14px }
+  .library-toolbar button { min-height: 44px }
+  .library-card { padding: 19px 17px }
+  .monitor-browser { grid-template-columns: minmax(0, 1fr); gap: 14px }
+  .monitor-items { display: flex; gap: 6px; max-height: none; overflow-x: auto }
+  .monitor-item { flex: 0 0 180px; width: 180px; min-width: 180px }
+  .monitor-detail { padding: 20px; min-height: 240px }
+  .monitor-detail .source-name { font-size: 20px }
+  .reader-toolbar { top: var(--topbar-height, 64px); padding: 10px 12px }
+  .reader-actions { gap: 8px; flex-wrap: wrap }
+  .reader-article { padding: 22px 17px 32px }
+  .reading-mode .connection-control { display: flex }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar, .article, .author-nav, .nav-item, .range-panel { transition: none; animation: none }
 }

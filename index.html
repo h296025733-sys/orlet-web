@@ -10,13 +10,13 @@
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css?v=88a199b550a2">
   <link rel="stylesheet" href="./reader-shell.css?v=6a6a00f5d264">
-  <link rel="stylesheet" href="./filter-bar.css?v=c0d25129a080">
   <link rel="stylesheet" href="./typography.css?v=50fe2a810b75">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
+  <link rel="stylesheet" href="./filter-bar.css?v=ecc2392851e0">
   <script type="module" src="./quote-overlay.js?v=e7237e765319"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=332512484a5d"></script>
-  <script type="module" src="./app.js?v=b901996af1c7"></script>
+  <script type="module" src="./app.js?v=c133969f5222"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -33,11 +33,11 @@
   </svg>
 
   <aside class="sidebar" id="sidebar" aria-label="阅读导航">
+    <div class="sidebar-heading"><span>Orlet</span><button id="nav-close" class="icon-button" aria-label="收起导航">×</button></div>
     <div class="sidebar-scroll">
-      <nav class="reading-nav" aria-label="阅读">
-        <button class="nav-item active" data-view="feed"><svg class="nav-icon" aria-hidden="true"><use href="#icon-feed"/></svg><span>全部动态</span><span class="new-content-dot" id="new-content-dot" title="有内容更新" hidden></span><span class="nav-count" id="nav-total">0</span></button>
-        <button class="nav-item" data-view="unread"><svg class="nav-icon" aria-hidden="true"><use href="#icon-unread"/></svg><span>未读</span><span class="nav-count" id="nav-unread">0</span></button>
-        <button class="nav-item" data-view="starred"><svg class="nav-icon" aria-hidden="true"><use href="#icon-star"/></svg><span>收藏</span></button>
+      <nav class="reading-nav" aria-label="工作区">
+        <button class="nav-item active" data-workspace="feed" aria-pressed="true"><svg class="nav-icon" aria-hidden="true"><use href="#icon-feed"/></svg><span>内容</span><span class="new-content-dot" id="new-content-dot" title="有内容更新" hidden></span><span class="nav-count" id="nav-total">0</span></button>
+        <button class="nav-item" data-workspace="sources" aria-pressed="false"><svg class="nav-icon" aria-hidden="true"><use href="#icon-sources"/></svg><span>监控</span></button>
       </nav>
       <nav class="nav-section" aria-label="作者">
         <div class="nav-section-heading"><span>关注来源 <span id="authors-count"></span></span><button id="author-add" title="添加作者" aria-label="添加作者">+</button></div>
@@ -45,7 +45,6 @@
       </nav>
     </div>
     <nav class="manage-nav" aria-label="管理">
-      <button class="nav-item" data-view="sources"><svg class="nav-icon" aria-hidden="true"><use href="#icon-sources"/></svg><span>订阅管理</span></button>
       <button class="nav-item" data-view="activity"><svg class="nav-icon" aria-hidden="true"><use href="#icon-history"/></svg><span>最近记录</span></button>
     </nav>
   </aside>
@@ -54,7 +53,6 @@
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="Orlet 首页"><img src="./mark.svg" alt="" width="30" height="30" fetchpriority="high"><span>Orlet</span></a>
-      <nav class="workspace-modes" aria-label="工作区"><button data-workspace="sources" aria-pressed="false">监控</button><button data-workspace="feed" class="active" aria-pressed="true">内容</button></nav>
       <button class="mobile-nav-toggle" id="nav-toggle" aria-label="展开导航" aria-controls="sidebar" aria-expanded="false"><svg class="nav-icon" aria-hidden="true"><use href="#icon-menu"/></svg></button>
       <div class="breadcrumbs"><span id="breadcrumb-title">全部动态</span></div>
       <div class="top-actions">
@@ -63,6 +61,11 @@
       </div>
     </header>
     <main>
+      <div id="content-controls" class="content-controls"><nav class="content-tabs" aria-label="内容视图">
+        <button id="content-all" class="content-tab active" data-content="all" aria-pressed="true">全部</button>
+        <button id="unread-chip" class="content-tab" data-content="unread" aria-pressed="false">未读<span class="period-count" id="period-count-unread"></span></button>
+        <button id="content-saved" class="content-tab" data-content="starred" aria-pressed="false"><svg class="button-icon" aria-hidden="true"><use href="#icon-star"/></svg>收藏</button>
+      </nav></div>
       <nav class="workspace-platforms" id="workspace-platforms" aria-label="平台">
         <button class="platform-nav active" data-platform="">全部</button>
         <button class="platform-nav" data-platform="wechat">公众号<span class="nav-count" id="count-wechat"></span></button>
@@ -73,12 +76,11 @@
         <div><h1 id="page-heading">全部动态</h1><p class="page-subtitle" id="page-subtitle"></p></div>
         <button class="primary" id="add-open"><svg class="button-icon" aria-hidden="true"><use href="#icon-plus"/></svg>添加订阅</button>
       </div>
-      <section class="content-panel" id="feed-view" aria-label="内容列表">
-        <div class="panel-toolbar filter-row">
-          <div class="period-tabs" aria-label="时间与未读筛选">
+        <div class="panel-toolbar filter-row" id="feed-filters">
+          <div class="period-tabs" aria-label="日期筛选（北京时间）" title="北京时间">
             <button class="period-tab active" data-tab="today" aria-pressed="true">今天<span class="period-count" id="period-count-today"></span></button>
+            <button class="period-tab" data-tab="all" aria-pressed="false">全部日期</button>
             <button class="period-tab" data-tab="range" aria-pressed="false" id="range-tab">日期<span class="period-count" id="range-label"></span></button>
-            <button class="period-tab unread-chip" data-unread="1" aria-pressed="false" id="unread-chip">未读<span class="period-count" id="period-count-unread"></span></button>
           </div>
           <div class="range-panel" id="range-panel" hidden>
             <div class="range-presets" role="group" aria-label="快捷范围">
@@ -97,6 +99,7 @@
             </div>
           </div>
         </div>
+      <section class="content-panel" id="feed-view" aria-label="内容列表">
         <div class="feed-meta"><span id="feed-count"></span><button class="text-button" id="read-all" disabled>本区域标为已读</button><span class="timezone-label">北京时间</span></div>
         <div class="updates-notice" id="updates-notice" role="status" hidden><span><svg class="button-icon" aria-hidden="true"><use href="#icon-update"/></svg><span id="updates-label"></span></span><button id="updates-apply">查看更新</button></div>
         <div id="articles" class="articles"></div>
