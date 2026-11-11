@@ -6,17 +6,17 @@
   <meta name="color-scheme" content="light">
   <title>Orlet</title>
   <meta name="application-name" content="Orlet">
-  <meta name="theme-color" content="#315b49">
+  <meta name="theme-color" content="#252c30">
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css?v=88a199b550a2">
-  <link rel="stylesheet" href="./reader-shell.css?v=6a6a00f5d264">
-  <link rel="stylesheet" href="./typography.css?v=2d720f1baa00">
+  <link rel="stylesheet" href="./reader-shell.css?v=5548d88927e0">
+  <link rel="stylesheet" href="./typography.css?v=c9108b9cb38d">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
-  <link rel="stylesheet" href="./filter-bar.css?v=703de7966ba3">
+  <link rel="stylesheet" href="./filter-bar.css?v=b6dba256713f">
   <script type="module" src="./quote-overlay.js?v=e7237e765319"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=332512484a5d"></script>
-  <script type="module" src="./app.js?v=e0301a7f7f18"></script>
+  <script type="module" src="./app.js?v=bb2fba7061c4"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -26,6 +26,7 @@
     <symbol id="icon-sources" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><path d="M17 14v6m-3-3h6"/></symbol>
     <symbol id="icon-history" viewBox="0 0 24 24"><path d="M4.5 8a8 8 0 1 1-.1 8M4 4v5h5m3-2v5l3 2"/></symbol>
     <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4m8-4v4M4 10h16M8 14h2m4 0h2"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
     <symbol id="icon-settings" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -61,28 +62,32 @@
       </div>
     </header>
     <main>
+      <div class="workspace-heading">
       <div id="content-controls" class="content-controls"><nav class="content-tabs" aria-label="内容视图">
         <button id="content-all" class="content-tab active" data-content="all" aria-pressed="true">全部</button>
         <button id="unread-chip" class="content-tab" data-content="unread" aria-pressed="false">未读<span class="period-count" id="period-count-unread"></span></button>
         <button id="content-saved" class="content-tab" data-content="starred" aria-pressed="false"><svg class="button-icon" aria-hidden="true"><use href="#icon-star"/></svg>收藏</button>
       </nav></div>
+      <div class="page-title" id="page-title">
+        <div><h1 id="page-heading">全部动态</h1><p class="page-subtitle" id="page-subtitle"></p></div>
+        <button class="primary" id="add-open"><svg class="button-icon" aria-hidden="true"><use href="#icon-plus"/></svg>添加订阅</button>
+      </div>
+      </div>
+      <div class="filter-toolbar">
       <nav class="workspace-platforms" id="workspace-platforms" aria-label="平台">
         <button class="platform-nav active" data-platform="">全部</button>
         <button class="platform-nav" data-platform="wechat">公众号<span class="nav-count" id="count-wechat"></span></button>
         <button class="platform-nav" data-platform="xiaohongshu">小红书<span class="nav-count" id="count-xiaohongshu"></span></button>
         <button class="platform-nav" data-platform="x">X<span class="nav-count" id="count-x"></span></button>
       </nav>
-      <div class="page-title" id="page-title">
-        <div><h1 id="page-heading">全部动态</h1><p class="page-subtitle" id="page-subtitle"></p></div>
-        <button class="primary" id="add-open"><svg class="button-icon" aria-hidden="true"><use href="#icon-plus"/></svg>添加订阅</button>
-      </div>
         <div class="panel-toolbar filter-row" id="feed-filters">
           <div class="period-tabs" aria-label="日期筛选（北京时间）" title="北京时间">
             <button class="period-tab active" data-tab="today" aria-pressed="true">今天<span class="period-count" id="period-count-today"></span></button>
             <button class="period-tab" data-tab="all" aria-pressed="false">全部日期</button>
-            <button class="period-tab" data-tab="range" aria-pressed="false" id="range-tab">日期<span class="period-count" id="range-label"></span></button>
+            <button class="period-tab" data-tab="range" aria-pressed="false" aria-expanded="false" aria-controls="range-panel" id="range-tab"><svg class="button-icon" aria-hidden="true"><use href="#icon-calendar"/></svg>日期<span class="period-count" id="range-label"></span></button>
           </div>
-          <div class="range-panel" id="range-panel" hidden>
+          <div class="range-panel" id="range-panel" role="group" aria-label="选择日期范围" hidden>
+            <div class="range-panel-heading"><strong>选择日期</strong><button type="button" id="range-close" aria-label="关闭日期选择">×</button></div>
             <div class="range-presets" role="group" aria-label="快捷范围">
               <button type="button" class="range-preset" data-range-days="1">今天</button>
               <button type="button" class="range-preset" data-range-days="7">近 7 天</button>
@@ -99,6 +104,7 @@
             </div>
           </div>
         </div>
+      </div>
       <section class="content-panel" id="feed-view" aria-label="内容列表">
         <div class="feed-meta"><span id="feed-count"></span><button class="text-button" id="read-all" disabled>本区域标为已读</button><span class="timezone-label">北京时间</span></div>
         <div class="updates-notice" id="updates-notice" role="status" hidden><span><svg class="button-icon" aria-hidden="true"><use href="#icon-update"/></svg><span id="updates-label"></span></span><button id="updates-apply">查看更新</button></div>

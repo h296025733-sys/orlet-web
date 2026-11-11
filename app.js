@@ -808,9 +808,23 @@ function selectTab(tab){
     state.rangeOpen=!state.rangeOpen;
     const range=activeRange();
     if(range){$('#range-from').value=range.from;$('#range-to').value=range.to;}
-    updateNavigation();return Promise.resolve();
+    updateNavigation();fitRangePanel();return Promise.resolve();
   }
   return applyFeedFilter({tab});
+}
+function closeRangePanel({restoreFocus=false}={}){
+  if(!state.rangeOpen)return;
+  state.rangeOpen=false;
+  updateNavigation();
+  if(restoreFocus)$('#range-tab').focus?.({preventScroll:true});
+}
+function fitRangePanel(){
+  const panel=$('#range-panel');
+  if(!state.rangeOpen||!panel?.getBoundingClientRect||!panel.style)return;
+  const viewport=globalThis.visualViewport;
+  const bottom=(viewport?.offsetTop||0)+(viewport?.height||globalThis.innerHeight);
+  const room=bottom-panel.getBoundingClientRect().top-16;
+  panel.style.maxHeight=Math.max(120,room)+'px';
 }
 async function selectContent(mode){
   if(mode==='starred')return navigate('starred',state.platform,state.source);
@@ -890,6 +904,16 @@ document.querySelectorAll('[data-range-days]').forEach(el=>el.addEventListener('
   void applyFeedFilter({tab:'range',range:{from,to}});
 }));
 if($('#range-clear'))$('#range-clear').addEventListener('click',()=>{$('#range-from').value='';$('#range-to').value='';void applyFeedFilter({tab:'all',range:null});});
+$('#range-close')?.addEventListener('click',()=>closeRangePanel({restoreFocus:true}));
+globalThis.addEventListener?.('resize',fitRangePanel,{passive:true});
+globalThis.visualViewport?.addEventListener?.('resize',fitRangePanel,{passive:true});
+document.addEventListener?.('scroll',fitRangePanel,{capture:true,passive:true});
+document.addEventListener?.('pointerdown',event=>{
+  if(state.rangeOpen&&!event.target?.closest?.('#feed-filters'))closeRangePanel();
+});
+document.addEventListener?.('keydown',event=>{
+  if(event.key==='Escape'&&state.rangeOpen&&!document.querySelector('dialog[open]')?.open){event.preventDefault();closeRangePanel({restoreFocus:true});}
+},true);
 document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',()=>$('#'+el.dataset.close).close()));
 function showAdd(){ $('#source-error').textContent='';$('#wechat-search-error').textContent='';applyAddPlatform(state.view==='sources'&&state.monitorPlatform?state.monitorPlatform:addPlatform);$('#add-dialog').showModal(); }
 $('#add-open').addEventListener('click',showAdd);
