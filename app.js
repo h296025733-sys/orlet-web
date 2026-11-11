@@ -627,6 +627,10 @@ async function refresh({skipFeedMetadata=false}={}){
 }
 function readerCurrent(generation,id=state.readerId){return generation===readerGeneration&&state.readerId===id&&id!==null;}
 function documentReaderCurrent(session=documentReaderSession){return !!session&&documentReaderSession===session&&readerCurrent(session.generation,session.id);}
+function hasDocumentBody(document){
+  const content=document?.content;
+  return content?.version===2&&Array.isArray(content.blocks)&&content.blocks.some((block,index)=>!!documentBlockHtml(block,index));
+}
 function documentWaiting(document){
   const active=status=>['queued','fetching'].includes(status);
   return active(document?.bodyStatus)||(document?.content?.blocks||[]).some(block=>
@@ -637,17 +641,20 @@ function stopReader(){libraryUi.cancel();readerGeneration++;clearTimeout(readerT
 function renderReader(error=''){
   const article=state.reader;
   $('#reader-title').textContent=articleTitle(article);
-  const archived=documentReaderCurrent(),document=state.readerDocument,complete=archived?document?.content?.complete===true:completeContent(article),metadata=!archived&&metadataCard(article);
+  const archived=documentReaderCurrent(),document=state.readerDocument,complete=!archived&&completeContent(article),metadata=!archived&&metadataCard(article);
   $('#reader-title').hidden=!archived&&complete&&article?.platform==='x';
   if(archived){
-    const hasBody=!!documentContentHtml(document?.content),waiting=documentWaiting(document),failed=!!documentReaderSession.error||document?.status==='error'||(!hasBody&&!waiting&&!!document);
+    const session=documentReaderSession,hasBody=hasDocumentBody(document);
+    const waiting=documentWaiting(document)||(document?.bodyStatus==='missing'&&!session.enqueued&&!session.libraryPath);
+    const failed=!hasBody&&(!!session.error||document?.bodyStatus==='error'||(!waiting&&!!document));
     renderDocumentContent(document?.content);
     $('#reader-content').setAttribute?.('aria-busy',String(!hasBody&&waiting));
     const connectionWaiting=!hasBody&&['network_error','timeout','closed'].includes(document?.failureCode);
-    const message=documentReaderSession.error||(connectionWaiting?'原文连接暂不可用，将自动重试':documentReaderSession.pollExpired&&!hasBody?'文章仍在准备，可刷新查看':failed?'正文暂未取得，请重试':hasBody?(complete?'':'正文暂未完整'):'正在准备正文…');
+    const message=hasBody?(document.content.textComplete===false?'正文暂未完整':''):
+      session.error||(connectionWaiting?'原文连接暂不可用，将自动重试':session.pollExpired?'文章仍在准备，可刷新查看':failed?'正文暂未取得，请重试':'正在准备正文…');
     $('#reader-status').textContent=message;$('#reader-status').hidden=!message;$('#reader-status').classList.toggle('is-error',failed);
-    $('#reader-retry-wrap').hidden=!documentReaderSession.pollExpired&&!failed&&(waiting||!document||!['partial','error'].includes(document.status));
-    $('#reader-retry').textContent=documentReaderSession.pollExpired?'刷新':'重试';
+    $('#reader-retry-wrap').hidden=!session.pollExpired&&!failed&&(waiting||!document||!['partial','error'].includes(document.status));
+    $('#reader-retry').textContent=session.pollExpired?'刷新':'重试';
   }else{
     $('#reader-retry').textContent='重试';
     const failed=!!error||['error','attention'].includes(article?.content_status);
@@ -675,6 +682,7 @@ function applyReader(article,generation){
 function applyReaderDocument(document,session){
   if(!documentReaderCurrent(session)||(session.libraryPath?document?.documentId!==session.entry.documentId:Number(document?.articleId)!==session.id))return false;
   if(!['missing','queued','fetching','ready','partial','error'].includes(document.status))throw new Error('Invalid document status');
+  if(hasDocumentBody(state.readerDocument)&&!hasDocumentBody(document))return false;
   state.readerDocument=document;
   if(!state.reader)state.reader={id:session.id,is_read:0,starred:0};
   for(const key of ['platform','author','title','url'])if(!state.reader[key]&&typeof document[key]==='string')state.reader[key]=document[key];
@@ -710,14 +718,20 @@ async function loadReaderDocument(session,{queue=false}={}){
     }
     if(session.libraryPath&&!session.located&&document.content){session.located=true;libraryUi.locate(session.entry);}
     scheduleDocumentReader(session);
-  }catch(error){if(documentReaderCurrent(session)&&!session.controller.signal.aborted){session.error='正文暂时无法加载，请重试';renderReader();}}
+  }catch(error){
+    if(documentReaderCurrent(session)&&!session.controller.signal.aborted){
+      if(hasDocumentBody(state.readerDocument)){renderReader();scheduleDocumentReader(session);}
+      else{session.error='正文暂时无法加载，请重试';renderReader();}
+    }
+  }
   finally{session.busy=false;}
 }
 async function requestDocumentContent(session){
   if(!documentReaderCurrent(session)||session.busy)return;
   const queue=!session.pollExpired;
   clearTimeout(readerTimer);readerTimer=null;session.startedAt=Date.now();session.polls=0;session.enqueued=true;session.error='';session.pollExpired=false;
-  $('#reader-retry-wrap').hidden=true;$('#reader-status').hidden=false;$('#reader-status').textContent='正在准备正文…';
+  $('#reader-retry-wrap').hidden=true;
+  if(!hasDocumentBody(state.readerDocument)){$('#reader-status').hidden=false;$('#reader-status').textContent='正在准备正文…';}
   await loadReaderDocument(session,{queue});
 }
 async function openLibraryReader(entry){
@@ -950,14 +964,20 @@ function applyAddPlatform(platform){
 for(const button of document.querySelectorAll('[data-add-platform]'))button.addEventListener('click',()=>applyAddPlatform(button.dataset.addPlatform));
 
 // ── 公众号搜索与添加（公众平台 searchbiz，经本机搜索服务） ──
+let wechatSearchBusy=false;
 async function wechatSearch(value){
-  const q=String(value||'').trim();if(!q)return;
+  const q=String(value||'').trim();if(!q||wechatSearchBusy)return;
+  wechatSearchBusy=true;
   const results=$('#wechat-search-results'),error=$('#wechat-search-error'),submit=$('#wechat-search-submit'),note=$('#wechat-search-note');
   error.textContent='';submit.disabled=true;results.innerHTML='<p class="list-empty">搜索中…</p>';
-  let followed=new Set();
-  try{ const current=await api('/weread'); followed=new Set((current.sources||[]).map(s=>String(s.bookId))); }catch{}
+  const knownFollowed=new Set((state.sources||[]).filter(s=>s.platform==='wechat').map(s=>s.bookId||s.wereadBookId||(/^http:\/\/127\.0\.0\.1:47822\/weread-browser\/(MP_WXS_\d{4,20})$/.exec(s.url||'')||[])[1]).filter(Boolean));
+  const controller=new AbortController();let timedOut=false;
+  const timeout=setTimeout(()=>{timedOut=true;controller.abort();},30000);
   try{
-    const data=await api('/weread/search?q='+encodeURIComponent(q));
+    const [data,followed]=await Promise.all([
+      api('/weread/search?q='+encodeURIComponent(q),{signal:controller.signal}),
+      api('/weread').then(current=>Array.isArray(current.sources)?new Set(current.sources.map(s=>String(s.bookId))):knownFollowed).catch(()=>knownFollowed)
+    ]);
     const items=Array.isArray(data.items)?data.items:[];
     note.textContent=items.length?`找到 ${items.length} 个公众号`:'换个名字再试试';
     results.innerHTML=items.length?items.map(x=>{
@@ -965,8 +985,8 @@ async function wechatSearch(value){
       const already=followed.has('MP_WXS_'+(x.bid||''));
       return `<div class="wx-result${already?' is-followed':''}"><span class="wx-result-face">${avatar?`<img src="${esc(avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:esc((x.nickname||'?').slice(0,1))}</span><div class="wx-result-main"><strong>${esc(x.nickname||'')}${already?' <span class="wx-followed">已追更</span>':''}</strong><p>${esc(x.signature||x.alias||'')}</p></div><button class="secondary" data-wechat-add="${esc(x.bid||'')}" data-wechat-name="${esc(x.nickname||'')}" data-wechat-avatar="${esc(avatar)}"${already?' disabled':''}>${already?'已追更':'添加'}</button></div>`;
     }).join(''):'<p class="list-empty">没有找到匹配的公众号</p>';
-  }catch(e){results.innerHTML='';error.textContent=e.message||'搜索失败';}
-  finally{submit.disabled=false;}
+  }catch(e){results.innerHTML='';error.textContent=timedOut||e?.name==='TimeoutError'||/signal timed out/i.test(e?.message||'')?'搜索超时，请稍后再试':e?.name==='AbortError'||/fetch is aborted|signal is aborted/i.test(e?.message||'')?'搜索已取消，请重试':e.message||'搜索失败';}
+  finally{clearTimeout(timeout);wechatSearchBusy=false;submit.disabled=false;}
 }
 $('#wechat-add-open')?.addEventListener('click',()=>{ applyAddPlatform('wechat');$('#source-error').textContent='';$('#wechat-search-error').textContent='';$('#add-dialog').showModal();setTimeout(()=>$('#wechat-search-input')?.focus(),60); });
 $('#wechat-search-submit')?.addEventListener('click',()=>wechatSearch($('#wechat-search-input').value));
