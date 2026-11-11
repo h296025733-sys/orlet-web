@@ -659,6 +659,7 @@ function renderReader(error=''){
   }
   $('#reader-analysis').hidden=!aiAnalysisEnabled();$('#reader-analysis').disabled=!article;
   $('#reader-star').textContent=article?.starred?'★ 已收藏':'☆ 收藏';
+  $('#reader-star').setAttribute('aria-pressed',String(!!article?.starred));
   $('#reader-read').textContent=article?.is_read?'标为未读':'标为已读';
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
   const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent='原文 ↗';
