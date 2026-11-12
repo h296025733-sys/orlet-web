@@ -60,6 +60,18 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
     finally{clearTimeout(timer);session.controller.abort();try{await session.reader?.cancel();}catch{}if(streaming===session)streaming=null;}
     return latest;
   }
+  async function receiveUpdate(path,initial,token,deadline){
+    const session={controller:new AbortController(),reader:null};streaming=session;
+    const timer=setTimeout(()=>session.controller.abort(),Math.max(1,Math.min(15000,deadline-Date.now())));
+    try{
+      const value=await api(path,{method:'GET',cache:'no-store',signal:session.controller.signal});
+      if(token!==generation)return initial;
+      if(!value||!['running','preparing','ready','error'].includes(value.status))throw Error('analysis_update_status');
+      if(value.jobId&&value.jobId!==initial.jobId||value.versionId&&initial.versionId&&value.versionId!==initial.versionId||value.documentId&&initial.documentId&&value.documentId!==initial.documentId)throw Error('analysis_update_identity');
+      if(value.status==='running'&&Number.isSafeInteger(value.revision)&&Number.isSafeInteger(initial.revision)&&value.revision<initial.revision)return initial;
+      return value;
+    }finally{clearTimeout(timer);session.controller.abort();if(streaming===session)streaming=null;}
+  }
   async function run(item,token,prepareAgain=false){
     busy=true;status('正在读取…');
     try{
@@ -81,6 +93,23 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
         if(data.status==='running')submitted=true;
         if(data.status==='running'&&/^[a-f0-9]{64}$/.test(data.jobId)){
           const pinned=query||(data.versionId?'?versionId='+encodeURIComponent(data.versionId):'');pollQuery=pinned+(pinned?'&':'?')+'jobId='+encodeURIComponent(data.jobId);
+          if(config.progressTransport==='updates'){
+            if(Date.now()>=deadline)throw new Error('分析仍在继续，可稍后查看');
+            const revision=Number.isSafeInteger(data.revision)&&data.revision>=0?data.revision:0,started=Date.now();
+            if(!hasPreview)status('正在分析…');
+            try{
+              data=await receiveUpdate(base+pollQuery+'&wait=1&afterRevision='+revision,data,token,deadline);
+              if(token!==generation)return;
+              // Normally the server holds an unchanged revision for ten seconds.
+              // A proxy or older server returning it immediately must not spin.
+              if(['running','preparing'].includes(data.status)&&(data.revision??0)<=revision&&Date.now()-started<1000){if(!await pause(token)||token!==generation)return;}
+            }catch(error){
+              if(token!==generation)return;if(error.status&&error.status<500)throw error;
+              if(Date.now()>=deadline)throw new Error('分析仍在继续，可稍后查看');
+              if(!hasPreview)status('正在重新连接…');if(!await pause(token)||token!==generation)return;
+            }
+            continue;
+          }
           if(!streamed.has(data.jobId)){streamed.add(data.jobId);if(!hasPreview)status('正在分析…');data=await receiveStream(base+pollQuery+'&stream=1',data,token,deadline);continue;}
         }
         if(['missing','error'].includes(data.status)&&(item.versionId||data.versionId)){
