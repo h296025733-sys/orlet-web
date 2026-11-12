@@ -12,13 +12,13 @@
   <link rel="stylesheet" href="./reader-shell.css?v=cb1f3f42efe4">
   <link rel="stylesheet" href="./typography.css?v=cb6f7b08e07f">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
-  <link rel="stylesheet" href="./filter-bar.css?v=a15a95868ba2">
+  <link rel="stylesheet" href="./filter-bar.css?v=65c8aec497ec">
   <script type="module" src="./reader-speech.js?v=c1d3fcc2b5a0"></script>
   <link rel="stylesheet" href="./reader-speech.css?v=1232e056e653">
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=332512484a5d"></script>
-  <script type="module" src="./app.js?v=864b87610672"></script>
+  <script type="module" src="./app.js?v=307341220873"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -27,6 +27,10 @@
     <symbol id="icon-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
     <symbol id="icon-action-analysis" viewBox="0 0 24 24"><path d="m14 3 2.2 5.8L22 11l-5.8 2.2L14 19l-2.2-5.8L6 11l5.8-2.2Z"/><path d="M5 2v4M3 4h4M5 16v6M2 19h6"/></symbol>
     <symbol id="icon-action-read" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path class="article-read-check" d="m8 12 2.5 2.5L16 9"/></symbol>
+    <symbol id="icon-library-tag" viewBox="0 0 24 24"><path d="M3 4h7l11 11-7 7L3 11Z"/><circle cx="7" cy="8" r="1"/></symbol>
+    <symbol id="icon-library-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/></symbol>
+    <symbol id="icon-library-controls" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></symbol>
+    <symbol id="icon-library-quote" viewBox="0 0 24 24"><path d="M10 5H4v7h6V5Zm0 7c0 4-2 6-5 7M21 5h-6v7h6V5Zm0 7c0 4-2 6-5 7"/></symbol>
     <symbol id="icon-sources" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><path d="M17 14v6m-3-3h6"/></symbol>
     <symbol id="icon-history" viewBox="0 0 24 24"><path d="M4.5 8a8 8 0 1 1-.1 8M4 4v5h5m3-2v5l3 2"/></symbol>
     <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></symbol>
@@ -119,8 +123,8 @@
       <section class="content-panel" id="sources-view" aria-label="我的监控" hidden><div id="sources-list"></div></section>
       <section class="content-panel" id="activity-view" hidden><div id="events-list"></div></section>
       <section id="library-view" class="library-view" aria-label="收藏资料库" hidden>
-        <div class="library-toolbar"><div class="library-kinds"><button id="library-kind-articles" aria-pressed="true">文章收藏</button><button id="library-kind-quotes" aria-pressed="false">语录收藏</button></div><label class="sr-only" for="library-tag-filter">筛选标签</label><select id="library-tag-filter"><option value="">全部标签</option></select><button class="text-button" id="library-tags-manage">管理标签</button></div>
-        <p id="library-status" class="library-status" role="status"></p><div id="library-list" class="library-list"></div><p id="library-empty" class="empty-state" hidden></p><button id="library-more" class="secondary" hidden>加载更多</button>
+        <div class="library-toolbar"><div class="library-kinds" role="group" aria-label="收藏类型"><button id="library-kind-articles" aria-pressed="true">文章<span class="library-kind-context">收藏</span></button><button id="library-kind-quotes" aria-pressed="false">语录<span class="library-kind-context">收藏</span></button></div><div class="library-filter-tools"><label class="sr-only" for="library-tag-filter">筛选标签</label><select id="library-tag-filter"><option value="">全部标签</option></select><button class="text-button" id="library-tags-manage" aria-label="管理标签" title="管理标签"><svg class="library-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-library-controls"/></svg><span class="library-action-label">管理标签</span></button></div></div>
+        <p id="library-status" class="library-status" role="status"></p><div id="library-list" class="library-list"></div><div id="library-empty" class="empty-state" hidden></div><button id="library-more" class="secondary" hidden>加载更多</button>
       </section>
       <section class="reader-view" id="reader-view" aria-label="原文阅读" tabindex="-1" hidden>
         <div class="reader-toolbar">
@@ -152,17 +156,21 @@
     <div class="dialog-title"><h2 id="analysis-heading">AI 分析</h2><button type="button" class="icon-button" id="analysis-close" aria-label="关闭分析">×</button></div>
     <p id="analysis-title" class="analysis-title"></p><p id="analysis-status" role="status"></p><div id="analysis-result" class="analysis-result"></div><p id="analysis-coverage" class="analysis-coverage" hidden></p><button id="analysis-retry" class="secondary" type="button" hidden>重试</button>
   </dialog>
-  <dialog id="library-tag-dialog">
-    <div class="dialog-title"><h2>设置标签</h2><button type="button" class="icon-button" data-close="library-tag-dialog" aria-label="关闭">×</button></div>
-    <div id="library-tag-options" class="tag-options"></div><div class="tag-create"><label class="sr-only" for="library-tag-name">新标签名称</label><input id="library-tag-name" maxlength="60" placeholder="新标签"><button type="button" id="library-tag-create" class="secondary">添加</button></div>
-    <p id="library-tag-error" class="form-error" role="status"></p><div class="dialog-actions"><button class="secondary" data-close="library-tag-dialog">跳过</button><button class="primary" id="library-tag-save">保存</button></div>
+  <dialog id="library-tag-dialog" aria-labelledby="library-tag-heading">
+    <div class="dialog-title"><h2 id="library-tag-heading">整理标签</h2><button type="button" class="icon-button" data-close="library-tag-dialog" aria-label="关闭">×</button></div>
+    <p id="library-tag-context" class="library-dialog-context"></p>
+    <div id="library-tag-options" class="tag-options" role="group" aria-label="选择标签，可多选"></div><div class="tag-create"><label class="sr-only" for="library-tag-name">新标签名称</label><input id="library-tag-name" maxlength="60" placeholder="新建标签"><button type="button" id="library-tag-create" class="secondary">添加</button></div>
+    <p id="library-tag-error" class="form-error" role="status"></p><div class="dialog-actions"><button class="secondary" data-close="library-tag-dialog">取消</button><button class="primary" id="library-tag-save">保存标签</button></div>
   </dialog>
-  <dialog id="library-tag-manager">
-    <div class="dialog-title"><h2>管理标签</h2><button type="button" class="icon-button" data-close="library-tag-manager" aria-label="关闭">×</button></div>
-    <label for="library-tag-source">标签</label><select id="library-tag-source"></select>
-    <label for="library-tag-rename">名称</label><div class="tag-create"><input id="library-tag-rename" maxlength="60"><button class="secondary" id="library-tag-rename-save">改名</button></div>
-    <label for="library-tag-target">合并到</label><div class="tag-create"><select id="library-tag-target"></select><button class="secondary" id="library-tag-merge-save">合并</button></div>
-    <p id="library-tag-manager-error" class="form-error" role="status"></p><div class="dialog-actions"><button class="primary" data-close="library-tag-manager">完成</button></div>
+  <dialog id="library-tag-manager" aria-labelledby="library-tag-manager-heading">
+    <div class="dialog-title"><h2 id="library-tag-manager-heading">管理标签</h2><button type="button" class="icon-button" data-close="library-tag-manager" aria-label="关闭">×</button></div>
+    <p id="library-tag-manager-empty" class="library-tag-empty" hidden>还没有标签，先为一篇收藏添加标签。</p>
+    <div id="library-tag-editor">
+      <label for="library-tag-source">选择标签</label><select id="library-tag-source"></select>
+      <label for="library-tag-rename">标签名称</label><div class="tag-create"><input id="library-tag-rename" maxlength="60"><button class="secondary" id="library-tag-rename-save">保存名称</button></div>
+      <details id="library-tag-merge" class="library-tag-merge"><summary>合并标签</summary><p class="form-note">合并后，原标签下的收藏会归入目标标签。</p><label for="library-tag-target">合并到</label><div class="tag-create"><select id="library-tag-target"></select><button class="secondary" id="library-tag-merge-save">合并</button></div></details>
+    </div>
+    <p id="library-tag-manager-error" class="form-error" role="status"></p><div class="dialog-actions"><button class="secondary" data-close="library-tag-manager">完成</button></div>
   </dialog>
   <dialog id="add-dialog">
     <form id="source-form">

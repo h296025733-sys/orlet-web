@@ -209,42 +209,77 @@ dialog .dialog-actions { gap: 10px }
 .list-empty { color: var(--muted); font-size: 14px }
 
 /* A saved article is still an article, with the same spacing and title hierarchy. */
-.library-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0; margin: 0; border: 0; background: transparent }
-.library-kinds { display: flex; flex-wrap: wrap; gap: 3px; padding: 3px; border: 0; border-radius: 26px; background: #e8edf2 }
+.library-toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 12px; padding: 0; margin: 0; border: 0; background: transparent }
+.library-kinds { display: flex; flex: 0 0 auto; flex-wrap: nowrap; gap: 3px; padding: 3px; border: 0; border-radius: 26px; background: #e8edf2 }
 .library-kinds button { min-height: 40px; padding: 7px 18px; border: 0; border-radius: 999px; color: #536779; font-size: 14px; font-weight: 500; background: transparent }
 .library-kinds button[aria-pressed="true"] { color: #274e6e; background: #fff; box-shadow: 0 1px 4px #29445b1c; font-weight: 600 }
-.library-toolbar select { min-height: 42px; margin-left: auto; padding-inline: 14px; background: #fff; color: var(--ink); border-color: #d2dde5; border-radius: 999px }
-.library-status { color: var(--muted); font-size: 13px; margin: 14px 0 10px }
+.library-filter-tools { display: flex; align-items: center; gap: 8px; min-width: 0; margin-left: auto }
+.library-toolbar select { min-width: 0; max-width: 220px; min-height: 44px; margin: 0; padding-inline: 14px; background: #fff; color: var(--ink); border-color: #d2dde5; border-radius: 999px }
+.library-status { color: var(--muted); font-size: 13px; margin: 12px 0 10px }
 .library-list { display: grid; gap: 12px }
-.library-card { padding: 20px 24px 18px; border: 1px solid #e0e6ec; border-radius: 14px; background: #fff; box-shadow: 0 2px 8px #243b5005 }
-.library-entry h2 { margin-bottom: 12px; font-size: 22px; font-weight: 600; line-height: 1.5; letter-spacing: -.02em; color: var(--ink-strong); text-wrap: pretty }
-.library-entry > span { font-size: 13px; line-height: 1.6; color: var(--muted) }
-.library-entry blockquote { margin: 0 0 20px; padding: 0 0 0 22px; border-left: 2px solid #a8becf; border-radius: 0; background: transparent; color: #3f5667; font-size: 21px; font-weight: 400; line-height: 1.9 }
-.library-entry:has(blockquote) h2 { font-size: 16px; font-weight: 400; color: var(--muted) }
-.library-card-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; padding: 12px 0 0; border-top: 1px solid #e6ecf1 }
-.library-card-foot > div:last-child { display: flex; align-items: center; gap: 8px; margin-left: auto }
-.library-card-foot button { min-height: 36px; padding: 6px 13px; border: 0; border-radius: 999px; font-size: 13px; color: #526a7c; background: transparent }
-.library-entry-tags { gap: 6px }
-.library-entry-tags span { padding: 3px 7px; border-radius: 3px; font-size: 12px; background: #edf2f5; color: #526d80 }
-.tag-option { border-color: #d9e3e9; border-radius: 5px }
+.library-card { padding: 18px 22px 12px; border: 1px solid #e0e6ec; border-radius: 14px; background: #fff; box-shadow: 0 2px 8px #243b5005 }
+.library-entry h2 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.5; letter-spacing: -.02em; color: var(--ink-strong); text-wrap: pretty }
+.library-entry blockquote { margin: 0 0 12px; padding: 0 0 0 16px; border-left: 2px solid #9ab6ca; border-radius: 0; background: transparent; color: #344c5e; font-size: 20px; font-weight: 400; line-height: 1.75; text-wrap: wrap }
+.library-entry:has(blockquote) h2 { font-size: 15px; font-weight: 500; line-height: 1.6; letter-spacing: 0; color: #647787 }
+.library-card-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 8px 16px; margin-top: 8px; padding: 0; border: 0 }
+.library-entry-meta { display: flex; flex: 1; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0 }
+.library-author { max-width: 100%; font-size: 12px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere }
+.library-card-foot .library-card-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; margin-left: auto }
+.library-card-foot button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 6px 10px; border: 0; border-radius: 999px; font-size: 13px; color: #526a7c; background: transparent }
+.library-icon { display: block; flex-shrink: 0; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none }
+.library-card [data-library-remove][aria-pressed="true"] .library-icon { fill: currentColor }
+.library-card [data-library-remove][aria-pressed="true"] { color: var(--accent) }
+.library-entry-tags { min-width: 0; max-width: 100%; gap: 6px }
+.library-entry-tags span { max-width: 100%; padding: 2px 8px; border-radius: 999px; font-size: 11px; line-height: 1.6; background: #edf2f6; color: #526d80; overflow-wrap: anywhere }
+#library-empty { margin-top: 12px; padding: 44px 20px; border: 1px dashed #d3dfe8; border-radius: 14px; background: #fafcfd }
+.library-empty-icon { display: grid; place-items: center; width: 48px; height: 48px; margin: 0 auto 14px; color: #6e899d; background: #edf2f6; border-radius: 50% }
+.library-empty-icon .library-icon { width: 23px; height: 23px }
+#library-empty strong { display: block; color: #41576a; font-size: 17px; font-weight: 600 }
+#library-empty p { margin: 8px auto 0; max-width: 28em; font-size: 14px; line-height: 1.8; text-wrap: wrap }
+#library-more { display: block; margin: 20px auto 0; min-height: 44px; padding: 8px 24px; border-radius: 999px; font-size: 14px }
+#library-tag-dialog, #library-tag-manager { width: min(460px, calc(100vw - 32px)); padding: 24px; border-radius: 16px }
+#library-tag-dialog .dialog-title, #library-tag-manager .dialog-title { margin-bottom: 16px; gap: 12px }
+#library-tag-dialog .dialog-title h2, #library-tag-manager .dialog-title h2 { font-size: 21px; font-weight: 600 }
+.library-dialog-context { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: -4px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; text-wrap: wrap }
+.tag-options { gap: 8px; padding: 2px }
+.tag-option { max-width: 100%; min-height: 44px; gap: 8px; padding: 8px 12px; margin: 0; color: #536b7c; background: #f3f6f8; border: 1px solid transparent; border-radius: 999px; font-size: 14px; line-height: 1.5 }
+.tag-option span { min-width: 0; overflow-wrap: anywhere }
+.tag-option input { width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; flex: 0 0 16px; accent-color: var(--accent) }
+.tag-option:has(input:checked) { border-color: #abc5d8; background: var(--accent-soft); color: #284f6d; font-weight: 600 }
+.tag-option:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.library-tag-empty { margin: 4px 0 12px; color: var(--muted); font-size: 14px; line-height: 1.8 }
+#library-tag-editor > label, .library-tag-merge label { color: #506778; font-size: 13px; font-weight: 500 }
+#library-tag-editor > select { width: 100%; margin: 6px 0 18px }
+#library-tag-dialog :is(input:not([type="checkbox"]),select), #library-tag-manager :is(input,select) { min-height: 44px; border-color: #cddae4; border-radius: 9px }
+#library-tag-dialog .tag-create, #library-tag-manager .tag-create { margin: 8px 0 0 }
+#library-tag-dialog .tag-create { margin-top: 18px }
+#library-tag-dialog .tag-create button, #library-tag-manager .tag-create button { min-height: 44px; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 500 }
+#library-tag-rename-save { color: #fff; background: var(--accent); border-color: transparent }
+.library-tag-merge { margin-top: 20px; padding-top: 6px; border-top: 1px solid var(--line) }
+.library-tag-merge summary { min-height: 44px; padding: 10px 0; color: #536c7e; font-size: 14px; cursor: pointer; }
+.library-tag-merge .form-note { margin: 0 0 14px; font-size: 13px; text-wrap: wrap }
+#library-tag-dialog .dialog-actions, #library-tag-manager .dialog-actions { gap: 8px; margin-top: 22px; padding-top: 4px }
+#library-tag-dialog .dialog-actions button, #library-tag-manager .dialog-actions button { min-height: 44px; padding: 8px 18px; border-radius: 999px; font-size: 14px }
+#library-tag-dialog .dialog-actions .secondary, #library-tag-manager .dialog-actions .secondary { border-color: transparent; background: #eef2f5; color: #536778 }
 .quote-save { background: var(--accent); color: #fff; box-shadow: 0 6px 20px #2638482b }
 
 .article :is(.wx-actions,.xhs-actions,.article-actions) button[data-star] { padding-inline: 13px; border: 0; border-radius: 999px; color: #2f5b7c; font-weight: 600; background: #e5eef6 }
 .article :is(.wx-actions,.xhs-actions,.article-actions) button[data-star].is-starred { color: #fff; background: var(--accent) }
-.library-card-foot button[data-library-tags] { padding-inline: 13px; border: 0; border-radius: 999px; color: #2f5b7c; background: #e5eef6 }
+.library-card-foot button[data-library-tags] { color: #526a7c; background: transparent }
 .reader-actions #reader-star { padding-inline: 16px; border: 0; border-radius: 999px; color: #fff; background: var(--accent); font-weight: 600 }
 .reader-actions #reader-star:hover { color: #fff; background: #2d506c }
 .reader-actions #reader-star[aria-pressed="true"] { color: var(--accent); border-color: #b7ccda; background: var(--accent-soft) }
 
-.library-toolbar #library-tags-manage { min-height: 42px; padding: 7px 14px; border: 0; border-radius: 999px; color: #496276; background: #e8edf2 }
+.library-toolbar #library-tags-manage { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex-shrink: 0; min-height: 44px; padding: 7px 14px; border: 0; border-radius: 999px; color: #496276; background: #e8edf2; white-space: nowrap }
 .library-card-foot button:hover, .library-toolbar #library-tags-manage:hover { color: var(--accent); background: var(--accent-soft); border-color: #9db7cc }
 .article :is(button,a):active, .reader-toolbar :is(button,a):active { background-color: #dce8f1 }
 .library-card:focus-within { border-color: #9db7cc }
 .library-entry:hover h2 { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em }
 .group-articles + .group-articles, .feed-group + .feed-group { margin-top: 12px }
 #activity-view { padding: 0 20px; border: 1px solid #d4dfe8; border-radius: 9px; background: #fff }
-.article button[data-read], .library-card-foot button[data-library-remove], .reader-actions #reader-read { border: 0; background: transparent; color: #607585; text-decoration: underline; text-decoration-color: #b0c0cc; text-underline-offset: 4px }
-.article button[data-read]:hover, .library-card-foot button[data-library-remove]:hover, .reader-actions #reader-read:hover { background: #edf2f6; color: #315d80; text-decoration-color: currentColor }
+.article button[data-read], .reader-actions #reader-read { border: 0; background: transparent; color: #607585; text-decoration: underline; text-decoration-color: #b0c0cc; text-underline-offset: 4px }
+.article button[data-read]:hover, .reader-actions #reader-read:hover { background: #edf2f6; color: #315d80; text-decoration-color: currentColor }
+.library-card[data-kind="quotes"] [data-library-remove]:hover { color: #9a4e49; background: #f9eeec }
 /* Monitoring remains a directory and its details, not another feed. */
 .monitor-browser { display: grid; grid-template-columns: minmax(210px, .75fr) minmax(0, 1.5fr); gap: 32px }
 .monitor-list, .monitor-detail { background: #fff; border: 1px solid #e0e6ec; border-radius: 14px; box-shadow: 0 2px 8px #243b5005 }
@@ -406,11 +441,28 @@ dialog .dialog-actions { gap: 10px }
   .library-toolbar button, .library-card-foot button { min-height: 44px; font-size: 13px }
   #library-tags-manage { padding: 8px 12px; color: #496276; background: #e8edf2 }
   .library-status { font-size: 12px; line-height: 1.5; margin: 12px 0 8px }
-  .library-card { padding: 16px 14px 14px }
-  .library-entry h2 { font-size: 20px; line-height: 1.5; letter-spacing: 0 }
-  .library-entry blockquote { padding-left: 18px; font-size: 19px; line-height: 1.9 }
-  .library-card-foot { gap: 8px; margin-top: 10px; padding-top: 10px }
-  .library-card-foot button { padding: 6px 10px; min-width: 44px }
+  .library-toolbar { gap: 8px }
+  .library-kinds { flex: 0 0 auto; gap: 2px }
+  .library-kinds button { min-height: 44px; padding: 7px 12px; font-size: 13px }
+  .library-kind-context { display: none }
+  .library-filter-tools { flex: 1; margin-left: 0; gap: 6px }
+  .library-toolbar select { flex: 1; width: 100%; max-width: none; padding-inline: 10px; font-size: 16px }
+  .library-toolbar #library-tags-manage { width: 44px; height: 44px; min-width: 44px; padding: 0 }
+  #library-tags-manage .library-action-label, .library-card .library-action-label { display: none }
+  .library-status { margin-top: 10px; font-size: 12px }
+  .library-list { gap: 10px }
+  .library-card { padding: 14px 14px 8px }
+  .library-entry h2 { font-size: 18px; line-height: 1.5; letter-spacing: 0; text-wrap: wrap }
+  .library-entry blockquote { padding-left: 12px; margin-bottom: 10px; font-size: 18px; line-height: 1.75 }
+  .library-entry:has(blockquote) h2 { font-size: 14px; line-height: 1.6 }
+  .library-card-foot { gap: 8px; margin-top: 6px; padding: 0 }
+  .library-entry-meta { gap: 4px 8px }
+  .library-card-foot .library-card-actions { gap: 2px }
+  .library-card-foot :is(button[data-library-tags],button[data-library-remove]) { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; padding: 0; background: transparent; text-decoration: none }
+  .library-card-foot .library-icon { width: 20px; height: 20px }
+  .library-card-foot button:active { background: var(--accent-soft) }
+  #library-tag-dialog, #library-tag-manager { padding: 22px 20px; border-radius: 16px }
+  #library-tag-dialog .dialog-actions, #library-tag-manager .dialog-actions { bottom: -22px; margin-top: 16px; padding: 12px 0 max(12px,env(safe-area-inset-bottom)); background: #fff }
   .monitor-browser { grid-template-columns: minmax(0, 1fr); gap: 12px }
   .monitor-list { padding: 12px; border: 1px solid #d4dfe8 }
   .monitor-items { display: flex; gap: 8px; max-height: none; overflow-x: auto }

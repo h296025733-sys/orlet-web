@@ -1,5 +1,5 @@
 import {interpretXhsTime} from './xhs-time.js?v=35dca5b261d0';
-import {createLibraryUi} from './library-ui.js?v=257a8196ebff';
+import {createLibraryUi} from './library-ui.js?v=0bf8528f4618';
 import {createAnalysisUi} from './analysis-ui.js?v=f03be82f3ffc';
 const $=s=>document.querySelector(s);
 const platforms={x:'X',xiaohongshu:'小红书',wechat:'微信公众号'};
@@ -622,8 +622,9 @@ function renderPeriodCounts(){
 async function refresh({skipFeedMetadata=false}={}){
   const request=++summaryRequest;
   try{
-    const [summary,sources,watch]=await Promise.all([api('/summary'),api('/sources'),api('/watch').catch(()=>null)]);if(request!==summaryRequest)return;const avatarState=items=>JSON.stringify(items.map(s=>[s.id,avatarUrl(s.avatar)])),avatarsChanged=avatarState(state.sources)!==avatarState(sources.items),archiveChanged=documentArchiveEnabled()!==(summary.features?.documentArchive===true)||aiAnalysisEnabled()!==(summary.features?.aiAnalysis===true);state.summary=summary;state.sources=sources.items;state.watch=watch;
+    const [summary,sources,watch]=await Promise.all([api('/summary'),api('/sources'),api('/watch').catch(()=>null)]);if(request!==summaryRequest)return;const libraryActivated=!libraryEnabled()&&summary.features?.library===true;const avatarState=items=>JSON.stringify(items.map(s=>[s.id,avatarUrl(s.avatar)])),avatarsChanged=avatarState(state.sources)!==avatarState(sources.items),archiveChanged=documentArchiveEnabled()!==(summary.features?.documentArchive===true)||aiAnalysisEnabled()!==(summary.features?.aiAnalysis===true);state.summary=summary;state.sources=sources.items;state.watch=watch;
     renderSummary();
+    if(libraryActivated&&libraryUi.active()){updateNavigation();await libraryUi.load();}
     const events=summary.events;
     renderMarkup($('#events-list'),events.length?events.map(e=>`<div class="event-row ${e.level==='warn'?'warn':''}"><span class="event-time">${time(e.created_at)}</span><span>${e.author?esc(e.author)+' · ':''}${esc(e.message)}</span></div>`).join(''):'<div class="list-empty">暂无记录</div>');
     renderSources();renderRuntime();renderAuthorNavigation();if(!['sources','activity'].includes(state.view)&&!libraryView()){if((avatarsChanged||archiveChanged)&&state.loaded&&state.readerId===null)renderArticles();if(!skipFeedMetadata){if(!state.loaded&&state.readerId===null&&!articleLoadController)await refreshArticles();else if(state.loaded)await refreshLocalMetadata();}}if(request===summaryRequest)$('#refresh-status').textContent='已同步 '+new Date().toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'});

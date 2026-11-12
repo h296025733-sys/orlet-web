@@ -44,12 +44,18 @@ export function createLibraryUi({api,$,esc,state,toast,enabled,openReader,onFavo
   let request=0,controller=null,tagEntry=null,tagSelection=new Set(),selection=null,quoteBusy=false,quotePress=null,consumedPointerClick=false,searchTimer;
   const active=()=>enabled()&&state.view==='starred'&&state.readerId===null;
   const path=(kind,id)=>'/library/'+kind+'/'+encodeURIComponent(id);
+  const icon=name=>`<svg class="library-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-${name}"/></svg>`;
+  function card(item){
+    const quote=model.kind==='quotes',remove=quote?'删除语录':'取消收藏';
+    return `<article class="library-card" data-kind="${model.kind}"><button class="library-entry" data-library-open="${esc(item.id)}">${quote?`<blockquote>${esc(item.text)}</blockquote>`:''}<h2>${esc(item.title||'未命名文章')}</h2></button><div class="library-card-foot"><div class="library-entry-meta">${item.author?`<span class="library-author">${esc(item.author)}</span>`:''}${item.tags.length?`<div class="library-entry-tags">${item.tags.map(t=>`<span>${esc(t.name)}</span>`).join('')}</div>`:''}</div><div class="library-card-actions"><button type="button" data-library-tags="${esc(item.id)}" aria-label="整理标签" title="整理标签">${icon('library-tag')}<span class="library-action-label">标签</span></button><button type="button" data-library-remove="${esc(item.id)}" aria-label="${remove}" title="${remove}"${quote?'':' aria-pressed="true"'}>${icon(quote?'library-trash':'star')}<span class="library-action-label">${remove}</span></button></div></div></article>`;
+  }
   function render(){
     if(!active())return;
     $('#library-kind-articles').setAttribute('aria-pressed',String(model.kind==='articles'));$('#library-kind-quotes').setAttribute('aria-pressed',String(model.kind==='quotes'));
     $('#library-tag-filter').innerHTML='<option value="">全部标签</option>'+model.tags.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('#library-tag-filter').value=model.tag;
-    $('#library-list').innerHTML=model.items.map(item=>`<article class="library-card"><button class="library-entry" data-library-open="${esc(item.id)}">${model.kind==='quotes'?`<blockquote>${esc(item.text)}</blockquote>`:''}<h2>${esc(item.title||'未命名文章')}</h2><span>${esc(item.author||'')}</span></button><div class="library-card-foot"><div class="library-entry-tags">${item.tags.map(t=>`<span>${esc(t.name)}</span>`).join('')}</div><div><button data-library-tags="${esc(item.id)}">标签</button><button data-library-remove="${esc(item.id)}">${model.kind==='quotes'?'删除语录':'取消收藏'}</button></div></div></article>`).join('');
-    $('#library-empty').hidden=!!model.items.length||model.loading;$('#library-empty').textContent=model.q||model.tag?'没有匹配的收藏':model.kind==='quotes'?'划线收藏的句子会出现在这里':'收藏的文章会出现在这里';
+    $('#library-list').innerHTML=model.items.map(card).join('');
+    const filtered=!!(model.q||model.tag),quote=model.kind==='quotes';
+    $('#library-empty').hidden=!!model.items.length||model.loading;$('#library-empty').innerHTML=`<span class="library-empty-icon">${icon(filtered?'search':quote?'library-quote':'star')}</span><strong>${filtered?'没有找到匹配的收藏':quote?'还没有收藏的语录':'还没有收藏的文章'}</strong><p>${filtered?'换个关键词或标签试试。':quote?'阅读时选中文字，再点“划线收藏”。':'在文章上点亮星标，就能在这里继续阅读。'}</p>`;
     $('#library-status').textContent=model.loading?'正在加载…':`${model.total} ${model.kind==='quotes'?'条语录':'篇文章'}`;
     $('#library-more').hidden=model.items.length>=model.total;$('#library-more').disabled=model.loading;
   }
@@ -63,10 +69,11 @@ export function createLibraryUi({api,$,esc,state,toast,enabled,openReader,onFavo
   }
   function cancel(){request++;controller?.abort();model.loading=false;clearTimeout(searchTimer);hideSelection();globalThis.CSS?.highlights?.delete('orlet-quote');}
   function renderTags(){
-    $('#library-tag-options').innerHTML=model.tags.map(t=>`<label class="tag-option"><input type="checkbox" value="${esc(t.id)}"${tagSelection.has(t.id)?' checked':''}><span>${esc(t.name)}</span></label>`).join('');
+    $('#library-tag-options').innerHTML=model.tags.length?model.tags.map(t=>`<label class="tag-option"><input type="checkbox" value="${esc(t.id)}"${tagSelection.has(t.id)?' checked':''}><span>${esc(t.name)}</span></label>`).join(''):'<p class="library-tag-empty">还没有标签，可以在下方新建。</p>';
   }
   async function editTags(entry){
     tagEntry=entry;tagSelection=new Set(entry.tags?.map(t=>t.id)||[]);$('#library-tag-error').textContent='';$('#library-tag-name').value='';
+    $('#library-tag-context').textContent=entry.title||'为这条收藏选择标签';
     try{await tags();renderTags();$('#library-tag-dialog').showModal();}catch(error){toast(error.message);}
   }
   async function favorite(article,value){
@@ -121,11 +128,19 @@ export function createLibraryUi({api,$,esc,state,toast,enabled,openReader,onFavo
     if(!tagEntry)return;const button=$('#library-tag-save');button.disabled=true;
     try{await api(path(tagEntry.kind,tagEntry.id)+'/tags',{method:'PUT',body:JSON.stringify({tags:[...tagSelection]})});$('#library-tag-dialog').close();if(active())await load();}catch(error){$('#library-tag-error').textContent=error.message;}finally{button.disabled=false;}
   });
-  function renderTagManager(){
-    const options=model.tags.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('#library-tag-source').innerHTML=options;$('#library-tag-target').innerHTML=options;$('#library-tag-rename').value=model.tags[0]?.name||'';
+  function renderTagTarget(){
+    const targets=model.tags.filter(t=>t.id!==$('#library-tag-source').value),previous=$('#library-tag-target').value;
+    $('#library-tag-target').innerHTML=targets.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
+    if(targets.some(t=>t.id===previous))$('#library-tag-target').value=previous;
+    $('#library-tag-merge-save').disabled=!targets.length;$('#library-tag-merge').hidden=!targets.length;
   }
-  $('#library-tags-manage').addEventListener('click',async()=>{try{await tags();renderTagManager();$('#library-tag-manager-error').textContent='';$('#library-tag-manager').showModal();}catch(error){toast(error.message);}});
-  $('#library-tag-source').addEventListener('change',()=>{$('#library-tag-rename').value=model.tags.find(t=>t.id===$('#library-tag-source').value)?.name||'';});
+  function renderTagManager(){
+    const previous=$('#library-tag-source').value,selected=model.tags.find(t=>t.id===(model.tag||previous))||model.tags[0];
+    $('#library-tag-source').innerHTML=model.tags.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');if(selected)$('#library-tag-source').value=selected.id;
+    $('#library-tag-rename').value=selected?.name||'';$('#library-tag-editor').hidden=!selected;$('#library-tag-manager-empty').hidden=!!selected;$('#library-tag-rename-save').disabled=!selected;renderTagTarget();
+  }
+  $('#library-tags-manage').addEventListener('click',async()=>{try{await tags();renderTagManager();$('#library-tag-merge').open=false;$('#library-tag-manager-error').textContent='';$('#library-tag-manager').showModal();}catch(error){toast(error.message);}});
+  $('#library-tag-source').addEventListener('change',()=>{$('#library-tag-rename').value=model.tags.find(t=>t.id===$('#library-tag-source').value)?.name||'';renderTagTarget();});
   for(const operation of ['rename','merge'])$('#library-tag-'+operation+'-save').addEventListener('click',async()=>{
     const source=$('#library-tag-source').value,button=$('#library-tag-'+operation+'-save');if(!source)return;button.disabled=true;
     try{await api('/library/tags/'+encodeURIComponent(source)+(operation==='merge'?'/merge':''),{method:operation==='merge'?'POST':'PATCH',body:JSON.stringify(operation==='merge'?{targetId:$('#library-tag-target').value}:{name:$('#library-tag-rename').value})});await tags();renderTagManager();model.tag='';if(active())await load();}
