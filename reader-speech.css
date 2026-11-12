@@ -1,23 +1,56 @@
-/* Scoped to the article body; list cards and the sticky toolbar stay independent. */
+/* Article entry and its movable player. Other navigation and reading styles stay independent. */
 .reader-article #reader-title:has(+ .reader-listen) { margin-bottom: 8px }
 .reader-listen { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; width: 100%; margin: 0 0 22px; color: var(--accent); font-size: 14px; line-height: 1.5 }
-.reader-listen [hidden] { display: none !important }
+.reader-listen [hidden], .reader-speech-panel[hidden], .reader-speech-panel [hidden], .reader-speech-dock[hidden] { display: none !important }
 .reader-listen button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 0; border-radius: 6px; padding: 0 10px; background: transparent; color: inherit; font: inherit; font-weight: 600; box-shadow: none }
 .reader-listen .reader-listen-toggle { margin-left: -10px }
 .reader-listen button:hover:not(:disabled) { background: var(--accent-soft) }
 .reader-listen button:disabled { cursor: default; color: var(--muted); opacity: .65 }
-.reader-listen svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round }
-.reader-listen .listen-pause { display: none }
-.reader-listen:is([data-phase="playing"],[data-phase="starting"]) .listen-headphones { display: none }
-.reader-listen:is([data-phase="playing"],[data-phase="starting"]) .listen-pause { display: block }
-.reader-listen-controls { display: flex; align-items: center; gap: 4px; margin-left: auto }
-.reader-listen select { width: 78px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--accent); font: inherit; font-size: 16px; cursor: pointer }
-.reader-listen .reader-listen-stop { width: 44px; padding: 0 }
-.reader-listen-progress { flex: 0 0 100%; width: 100%; height: 3px; margin: 4px 0 8px; border: 0; border-radius: 3px; overflow: hidden; appearance: none; background: var(--line); color: var(--accent); accent-color: var(--accent) }
-.reader-listen-progress::-webkit-progress-bar { background: var(--line) }
-.reader-listen-progress::-webkit-progress-value { background: var(--accent) }
-.reader-listen-progress::-moz-progress-bar { background: var(--accent) }
+.reader-listen svg, .reader-speech-panel svg, .reader-speech-dock svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round }
 .reader-listen-message { flex: 0 0 100%; color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
+.reader-speech-panel { --speech-inset-left: env(safe-area-inset-left, 0px); --speech-inset-right: env(safe-area-inset-right, 0px); --speech-inset-top: env(safe-area-inset-top, 0px); --speech-inset-bottom: env(safe-area-inset-bottom, 0px); position: fixed; z-index: 70; right: auto; bottom: auto; width: min(320px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; overscroll-behavior: contain; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; background: var(--surface, #fff); box-shadow: 0 12px 44px #182b3c29, 0 2px 8px #182b3c0d; color: var(--ink); font-family: inherit; font-size: 14px; line-height: 1.5; letter-spacing: normal }
+.reader-speech-panel *, .reader-speech-dock { box-sizing: border-box }
+.speech-panel-header { display: flex; align-items: center; gap: 0; position: sticky; top: 0; z-index: 1; padding: 2px 6px; background: var(--surface, #fff); border-bottom: 1px solid var(--line) }
+.reader-speech-panel button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; color: var(--muted); font: inherit; cursor: pointer }
+.reader-speech-panel button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent) }
+.reader-speech-panel button:disabled { opacity: .4; cursor: default }
+.reader-speech-panel .speech-drag-handle { flex: 1; justify-content: flex-start; gap: 6px; width: auto; min-width: 0; padding: 0 4px; color: var(--ink); font-weight: 600; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none }
+.speech-drag-handle:active { cursor: grabbing }
+.speech-drag-handle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.speech-drag-handle svg { stroke-width: 3.3; width: 16px; color: var(--subtle) }
+.speech-panel-body { padding: 14px 16px 16px }
+.reader-speech-panel .speech-article-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0 0 12px; color: var(--ink); font-size: 15px; line-height: 1.55; font-weight: 600; text-wrap: wrap; overflow-wrap: anywhere }
+.speech-transport { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0 0 12px }
+.reader-speech-panel .speech-toggle { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: #fff }
+.reader-speech-panel .speech-toggle:hover:not(:disabled) { background: var(--accent); color: #fff; filter: brightness(.92) }
+.speech-play-icon { margin-left: 2px }
+.speech-play-icon path { fill: currentColor; stroke-width: 1 }
+.speech-pause-icon { display: none }
+.reader-speech-panel:is([data-phase="playing"],[data-phase="starting"]) .speech-play-icon { display: none }
+.reader-speech-panel:is([data-phase="playing"],[data-phase="starting"]) .speech-pause-icon { display: block }
+.reader-speech-panel:is([data-phase="preparing"],[data-phase="buffering"]) .speech-toggle { position: relative }
+.reader-speech-panel:is([data-phase="preparing"],[data-phase="buffering"]) .speech-toggle svg { visibility: hidden }
+.reader-speech-panel:is([data-phase="preparing"],[data-phase="buffering"]) .speech-toggle::after { content: ""; position: absolute; inset: 14px; border: 2px solid #ffffff55; border-top-color: #fff; border-radius: 50%; animation: speech-preparing .8s linear infinite }
+.speech-rate-field { margin-left: auto; min-width: 0 }
+.reader-speech-panel select { max-width: 100%; min-height: 44px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, #fff); color: var(--ink); font-family: inherit; font-size: 16px; box-shadow: none; cursor: pointer }
+.reader-speech-panel .speech-rate { width: 78px; border-color: transparent; color: var(--accent) }
+.speech-position-heading { display: flex; align-items: baseline; justify-content: space-between; color: var(--muted); font-size: 12px }
+.speech-position-value { color: var(--ink); font-variant-numeric: tabular-nums }
+.reader-speech-panel .speech-position { display: block; width: 100%; min-width: 0; height: 44px; min-height: 44px; padding: 0; margin: 0 0 8px; border: 0; border-radius: 0; background: transparent; box-shadow: none; accent-color: var(--accent); cursor: pointer; touch-action: pan-y }
+.speech-voice-field { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px }
+.speech-voice-field > span { flex-shrink: 0 }
+.speech-voice-field .speech-voice { flex: 1; min-width: 0; width: 0; font-size: 14px; text-overflow: ellipsis }
+.reader-speech-panel .speech-panel-message { margin: 12px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
+.reader-speech-dock { position: fixed; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 44px; height: 60px; min-height: 60px; padding: 8px 0; border: 1px solid var(--line); border-right: 0; border-radius: 12px 0 0 12px; background: var(--surface, #fff); color: var(--accent); box-shadow: -3px 3px 15px #182b3c1a; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none }
+.reader-speech-dock[data-side="left"] { border-right: 1px solid var(--line); border-left: 0; border-radius: 0 12px 12px 0; box-shadow: 3px 3px 15px #182b3c1a }
+.reader-speech-dock:hover { background: var(--accent-soft) }
+.speech-dock-indicator { width: 5px; height: 5px; border-radius: 50%; background: var(--muted) }
+.reader-speech-dock[data-phase="playing"] .speech-dock-indicator { background: var(--accent); animation: speech-listening 1.4s ease-in-out infinite }
+.speech-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+body.nav-open :is(.reader-speech-panel,.reader-speech-dock) { visibility: hidden }
+@keyframes speech-listening { 50% { opacity: .3 } }
+@keyframes speech-preparing { to { transform: rotate(360deg) } }
 @media (max-width: 700px) {
   .reader-listen { margin-bottom: 18px; font-size: 14px }
 }
+@media (prefers-reduced-motion: reduce) { .reader-speech-dock .speech-dock-indicator, .reader-speech-panel .speech-toggle::after { animation: none !important } }
