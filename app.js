@@ -36,7 +36,7 @@ const renderedMarkup=new WeakMap();
 const articleNodes=new Map(),articleNodeKeys=new Map(),groupNodes=new Map();
 const pendingSourceChecks=new Set(),pendingArticleActions=new Set();
 let bulkReadBusy=false,scopedReadSupported=false;
-state.monitorPlatform='';state.monitorSelected=null;state.monitorFilter='all';state.monitorQ='';state.deleteSource=null;
+state.monitorPlatform='';state.monitorSelected=null;state.monitorFilter='all';state.monitorQ='';state.dateMenuOpen=false;state.monitorDetailOpen=false;state.monitorManageOpen=false;state.monitorListScroll=0;state.deleteSource=null;
 function renderMarkup(element,markup){if(renderedMarkup.get(element)===markup)return;renderedMarkup.set(element,markup);element.innerHTML=markup;}
 function scrollPage(top){globalThis.scrollTo?.({top:Math.max(0,Number(top)||0),left:0,behavior:'instant'});}
 function toast(message){$('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,3500);}
@@ -379,6 +379,8 @@ function updateNavigation(){
   });
   if($('#range-label'))$('#range-label').textContent=state.range?state.range.from.slice(5)+' ~ '+state.range.to.slice(5):'';
   if($('#range-panel'))$('#range-panel').hidden=!state.rangeOpen;
+  if($('#date-menu'))$('#date-menu').hidden=!(state.dateMenuOpen||state.rangeOpen);
+  if($('#date-toggle')){$('#date-toggle').setAttribute('aria-expanded',String(!!(state.dateMenuOpen||state.rangeOpen)));const label=state.tab==='today'?'今天':state.tab==='range'?'日期范围':'全部日期';$('#date-label').textContent=label;$('#date-toggle').setAttribute('aria-label','日期筛选：'+(state.tab==='range'&&state.range?state.range.from+' 至 '+state.range.to:label));}
   const source=state.sources.find(s=>s.id===state.source),title=state.view==='starred'?'收藏':source?.name||(state.platform?platforms[state.platform]:titles[state.view]);
   $('#breadcrumb-title').textContent=title;$('#page-heading').textContent=state.view==='sources'?'我的监控':title;
   $('#page-subtitle').textContent='';
@@ -482,12 +484,11 @@ function renderSources(){
   const query=state.monitorQ.toLocaleLowerCase();
   const filtered=platformSources.filter(s=>(!query||s.name.toLocaleLowerCase().includes(query))&&(state.monitorFilter==='paused'?!s.enabled:state.monitorFilter==='attention'?s.enabled&&(s.status==='error'||s.status==='attention'||s.access?.allowed===false):true));
   const selected=filtered.find(s=>s.id===state.monitorSelected)||filtered[0];state.monitorSelected=selected?.id??null;
-  const empty=query?'没有匹配的订阅':'暂无订阅';
-  const list=`<aside class="monitor-list"><div class="monitor-list-heading"><span>${filtered.length} 个订阅</span><select id="monitor-filter" aria-label="筛选订阅">${[['all','全部'],['paused','已暂停'],['attention','需处理']].map(([key,label])=>`<option value="${key}"${state.monitorFilter===key?' selected':''}>${label}</option>`).join('')}</select></div><div class="monitor-items">${filtered.map(s=>`<button class="monitor-item${s.id===selected?.id?' active':''}" data-source-select="${esc(s.id)}" aria-pressed="${s.id===selected?.id}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1),'monitor-avatar')}<span><strong>${esc(s.name)}</strong><span class="monitor-item-meta">${esc(platforms[s.platform])} · ${esc(stateWord(s))}</span></span></button>`).join('')||`<p class="list-empty">${empty}</p>`}</div></aside>`;
+  const list=`<aside class="monitor-list" aria-label="订阅目录"><div class="monitor-list-heading"><span><strong>${filtered.length}</strong> 个订阅</span><select id="monitor-filter" aria-label="筛选订阅">${[['all','全部状态'],['paused','已暂停'],['attention','需处理']].map(([key,label])=>`<option value="${key}"${state.monitorFilter===key?' selected':''}>${label}</option>`).join('')}</select></div><div class="monitor-items">${filtered.map(s=>{const word=stateWord(s);return `<button class="monitor-item${s.id===selected?.id?' active':''}" data-source-select="${esc(s.id)}" aria-pressed="${s.id===selected?.id}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1),'monitor-avatar')}<span class="monitor-item-copy"><strong>${esc(s.name)}</strong><span class="monitor-item-meta">${esc(platforms[s.platform])} · ${s.article_count||0} 篇</span></span><span class="monitor-item-tail"><span class="status-badge${!s.enabled?' paused':word==='需处理'?' warn':''}">${esc(word)}</span><svg class="button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></span></button>`;}).join('')||`<div class="monitor-list-empty"><svg class="button-icon" aria-hidden="true"><use href="#icon-sources"/></svg><strong>${query?'没有匹配的订阅':state.monitorFilter==='attention'?'暂时没有需要处理的订阅':state.monitorFilter==='paused'?'没有已暂停的订阅':'还没有订阅'}</strong><p>${query?'试试其他名称或切换平台。':state.monitorFilter!=='all'?'可以切换状态，查看其他订阅。':'添加感兴趣的作者，在这里管理更新。'}</p></div>`}</div></aside>`;
   const markup=selected?[selected].map(s=>{
     const blocked=s.access?.allowed===false;
     const word=stateWord(s),warn=word==='需处理';
-    const last=s.last_success?`最近检查 ${time(s.last_success)}`:'等待首次检查';
+    const last=s.last_success?time(s.last_success):'等待首次检查';
     const errors={lease_expired:'检查超时，稍后重试',parser_mismatch:'暂时无法读取内容',empty:'暂时无法读取内容',network_error:'连接失败，稍后重试',wrong_tab:'请打开微信读书页面',loading:'检查超时，稍后重试',platform_error:'暂时无法读取内容'};
     const message=(blocked?s.access?.reason:s.error)||'';
     const note=s.access?.code==='source_paused'?'':s.access?.code==='cooldown'&&s.access.retryAt?`更新暂停，预计 ${time(s.access.retryAt)} 后自动检查`:errors[message]||message;
@@ -500,11 +501,12 @@ function renderSources(){
     const recovery=recover?`<button class="secondary" data-weread-resume="${s.access.code==='user'?'user':'login'}">${s.access.code==='user'?'恢复公众号更新':'我已登录，恢复更新'}</button>`:'';
     const xhsRecovery=xhsRecover?`<button class="secondary" data-xhs-resume="login">我已登录小红书，恢复采集</button>`:'';
     const remove=!s.enabled?`<button class="danger-button outline" data-source-delete="${esc(s.id)}">删除订阅</button>`:'';
-    const controls=canOperate?`${recovery}${xhsRecovery}<button class="secondary" data-retry="${esc(s.id)}" ${blocked||!s.enabled||s.status==='checking'||pendingSourceChecks.has(s.id)?'disabled':''}>检查</button><button class="secondary" data-toggle="${esc(s.id)}" ${blocked&&s.access?.code!=='source_paused'&&!s.enabled?'disabled':''}>${s.enabled?'暂停订阅':'恢复订阅'}</button>`:(xhsRecovery||'<span class="source-hint">暂停中</span>');
-    const actions=`<div class="source-actions"><button class="primary" data-author-open="${esc(s.id)}">查看内容</button>${controls}${remove}</div>`;
-    return `<section class="monitor-detail"><div class="source-row${warn?' is-warn':''}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1).toUpperCase(),'source-face')}<div class="source-main"><h3><span class="source-name">${esc(s.name)}</span><span class="status-badge${!s.enabled?' paused':warn?' warn':''}">${esc(word)}</span></h3><p>${esc(platform)} · ${s.article_count||0} 篇</p></div></div><div class="monitor-dates"><span>订阅于 ${s.created_at?time(s.created_at):'—'}</span><span>${last}</span></div>${note?`<p class="source-error">${esc(note)}</p>`:''}${actions}</section>`;
-  }).join(''):`<div class="monitor-detail monitor-empty">${empty}</div>`;
-  renderMarkup($('#sources-list'),`<div class="monitor-browser">${list}${markup}</div>`);
+    const manage=(canOperate?`<button class="secondary" data-toggle="${esc(s.id)}" ${blocked&&s.access?.code!=='source_paused'&&!s.enabled?'disabled':''}>${s.enabled?'暂停订阅':'恢复订阅'}</button>`:'')+remove;
+    const check=canOperate?`<button class="secondary" data-retry="${esc(s.id)}" ${blocked||!s.enabled||s.status==='checking'||pendingSourceChecks.has(s.id)?'disabled':''}>${s.status==='checking'||pendingSourceChecks.has(s.id)?'检查中…':'检查更新'}</button>`:'';
+    const actions=`<div class="source-actions"><button class="primary" data-author-open="${esc(s.id)}">查看内容 <span aria-hidden="true">→</span></button>${check}</div>`;
+    return `<section class="monitor-detail"><button type="button" class="monitor-back" data-monitor-back><span aria-hidden="true">←</span> 订阅列表</button><div class="source-row${warn?' is-warn':''}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1).toUpperCase(),'source-face')}<div class="source-main"><h3 class="monitor-detail-heading" tabindex="-1"><span class="source-name">${esc(s.name)}</span></h3><p>${esc(platform)} · ${s.article_count||0} 篇内容</p></div><span class="status-badge${!s.enabled?' paused':warn?' warn':''}">${esc(word)}</span></div><dl class="monitor-dates"><div><dt>最近检查</dt><dd>${esc(last)}</dd></div><div><dt>开始订阅</dt><dd>${s.created_at?esc(time(s.created_at)):'—'}</dd></div></dl>${note?`<p class="source-error">${esc(note)}</p>`:''}${recovery||xhsRecovery?`<div class="source-recovery">${recovery}${xhsRecovery}</div>`:''}${actions}${manage?`<details class="monitor-management"${state.monitorManageOpen?' open':''}><summary>管理订阅</summary><p>暂停后停止检查，已保存的内容仍可阅读。</p><div class="source-manage-actions">${manage}</div></details>`:''}</section>`;
+  }).join(''):`<div class="monitor-detail monitor-empty"><svg class="button-icon" aria-hidden="true"><use href="#icon-sources"/></svg><strong>选择一个订阅</strong><p>查看更新状态，或继续阅读已收录的内容。</p></div>`;
+  renderMarkup($('#sources-list'),`<div class="monitor-browser" data-detail-open="${!!selected&&state.monitorDetailOpen}">${list}${markup}</div>`);
   installAvatars($('#sources-list'));
 }
 function renderRuntime(){
@@ -607,7 +609,7 @@ function renderConnectionStatus(){
   let label,connected;
   if(platform){const status=platformConnection(platform);label=(platform==='wechat'?'公众号':platforms[platform])+status.word;connected=status.connected;}
   else{const enabled=[...visiblePlatforms].filter(p=>state.sources.some(s=>s.platform===p&&s.enabled)||state.summary.collectors?.[p]?.enabled),statuses=enabled.map(platformConnection);connected=statuses.length>0&&statuses.every(s=>s.connected);label=statuses.some(s=>s.word==='部分暂停')?'部分暂停':statuses.some(s=>s.word==='采集中')?'采集中':connected?'更新正常':statuses.length&&statuses.every(s=>s.word===statuses[0].word)?statuses[0].word:statuses.length?'部分待处理':'未启用';}
-  $('#connection-title').textContent=label;$('#connection-dot').classList.toggle('connected',connected);$('#setup-open').title='连接设置 · '+label;
+  $('#connection-title').textContent=label;$('#connection-dot').classList.toggle('connected',connected);$('#setup-open').title='设置 · '+label;$('#setup-open').setAttribute?.('aria-label','设置 · '+label);
 }
 function renderPeriodCounts(){
   const globalFeed=state.view==='feed'&&!state.unreadOnly&&!state.platform&&!state.source&&!state.q,summary=state.summary||{},periods=summary.periods||{};
@@ -823,21 +825,22 @@ async function readerAction(patch){
   catch(e){if(readerCurrent(generation,id))toast(e.message);}
   finally{if(readerCurrent(generation,id)){readerActionBusy=false;renderReader();}}
 }
-async function navigate(view='feed',platform='',source='',{clearSearch=false}={}){const changed=state.view!==view||state.platform!==platform||state.source!==source||clearSearch&&!!state.q;clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();stopReader();state.readerId=null;state.reader=null;readerActionBusy=false;if(clearSearch)state.q='';state.rangeOpen=false;state.view=view;state.platform=platform;state.source=source;state.period=normalizePeriod(state.period);state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;toggleMobileNav(false);updateNavigation();if(view==='sources')renderSources();if(!['sources','activity'].includes(view))try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}}
+async function navigate(view='feed',platform='',source='',{clearSearch=false}={}){const changed=state.view!==view||state.platform!==platform||state.source!==source||clearSearch&&!!state.q;clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();stopReader();state.readerId=null;state.reader=null;readerActionBusy=false;if(clearSearch)state.q='';state.rangeOpen=false;state.dateMenuOpen=false;state.view=view;if(view==='sources'){state.monitorDetailOpen=false;state.monitorManageOpen=false;state.monitorListScroll=0;}state.platform=platform;state.source=source;state.period=normalizePeriod(state.period);state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;toggleMobileNav(false);updateNavigation();if(view==='sources'){renderSources();if(mobileNavigation?.matches)scrollPage(0);}if(!['sources','activity'].includes(view))try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}}
 async function applyFeedFilter({tab=normalizeTab(state.tab),range=state.range,unreadOnly=state.unreadOnly}={}){
+  const dateMenuWasOpen=!!(state.dateMenuOpen||state.rangeOpen);
   const nextTab=tab==='unread'?'all':normalizeTab(tab),nextRange=nextTab==='range'?range:null;
   const nextUnread=tab==='unread'||!!unreadOnly;
   const changed=state.tab!==nextTab||JSON.stringify(state.range)!==JSON.stringify(nextRange)||state.unreadOnly!==nextUnread;
   if(!changed&&articleLoadController)return;
   clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();
-  state.tab=nextTab;state.range=nextRange;state.unreadOnly=nextUnread;state.period=nextTab==='today'?'today':'history';state.rangeOpen=false;
+  state.tab=nextTab;state.range=nextRange;state.unreadOnly=nextUnread;state.period=nextTab==='today'?'today':'history';state.rangeOpen=false;state.dateMenuOpen=false;
   state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;
-  updateNavigation();
+  updateNavigation();if(dateMenuWasOpen)$('#date-toggle').focus?.({preventScroll:true});
   try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}
 }
 function selectTab(tab){
   if(tab==='range'){
-    state.rangeOpen=!state.rangeOpen;
+    state.rangeOpen=!state.rangeOpen;state.dateMenuOpen=true;
     const range=activeRange();
     if(range){$('#range-from').value=range.from;$('#range-to').value=range.to;}
     updateNavigation();fitRangePanel();return Promise.resolve();
@@ -845,14 +848,14 @@ function selectTab(tab){
   return applyFeedFilter({tab});
 }
 function closeRangePanel({restoreFocus=false}={}){
-  if(!state.rangeOpen)return;
-  state.rangeOpen=false;
+  if(!state.rangeOpen&&!state.dateMenuOpen)return;
+  state.rangeOpen=false;state.dateMenuOpen=false;
   updateNavigation();
-  if(restoreFocus)$('#range-tab').focus?.({preventScroll:true});
+  if(restoreFocus)$('#date-toggle').focus?.({preventScroll:true});
 }
 function fitRangePanel(){
-  const panel=$('#range-panel');
-  if(!state.rangeOpen||!panel?.getBoundingClientRect||!panel.style)return;
+  const panel=$('#date-menu');
+  if((!state.dateMenuOpen&&!state.rangeOpen)||!panel?.getBoundingClientRect||!panel.style)return;
   const viewport=globalThis.visualViewport;
   const bottom=(viewport?.offsetTop||0)+(viewport?.height||globalThis.innerHeight);
   const room=bottom-panel.getBoundingClientRect().top-16;
@@ -921,7 +924,7 @@ $('#sidebar').addEventListener('keydown',event=>{
   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
 });
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.view)));
-document.querySelectorAll('[data-platform]').forEach(el=>el.addEventListener('click',()=>{if(state.view==='sources'){state.monitorPlatform=el.dataset.platform;state.monitorSelected=null;updateNavigation();renderSources();}else void navigate('feed',el.dataset.platform);}));
+document.querySelectorAll('[data-platform]').forEach(el=>el.addEventListener('click',()=>{if(state.view==='sources'){state.monitorPlatform=el.dataset.platform;state.monitorSelected=null;state.monitorDetailOpen=false;state.monitorManageOpen=false;updateNavigation();renderSources();}else void navigate('feed',el.dataset.platform);}));
 document.querySelectorAll('[data-workspace]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.workspace)));
 document.querySelectorAll('[data-filter]').forEach(el=>el.addEventListener('click',()=>navigate(state.view,el.dataset.filter)));
 document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{void selectTab(el.dataset.tab);}));
@@ -937,14 +940,15 @@ document.querySelectorAll('[data-range-days]').forEach(el=>el.addEventListener('
 }));
 if($('#range-clear'))$('#range-clear').addEventListener('click',()=>{$('#range-from').value='';$('#range-to').value='';void applyFeedFilter({tab:'all',range:null});});
 $('#range-close')?.addEventListener('click',()=>closeRangePanel({restoreFocus:true}));
+$('#date-toggle')?.addEventListener('click',()=>{if(state.dateMenuOpen||state.rangeOpen){closeRangePanel();return;}state.dateMenuOpen=true;const range=activeRange();state.rangeOpen=!!range;if(range){$('#range-from').value=range.from;$('#range-to').value=range.to;}updateNavigation();fitRangePanel();});
 globalThis.addEventListener?.('resize',fitRangePanel,{passive:true});
 globalThis.visualViewport?.addEventListener?.('resize',fitRangePanel,{passive:true});
 document.addEventListener?.('scroll',fitRangePanel,{capture:true,passive:true});
 document.addEventListener?.('pointerdown',event=>{
-  if(state.rangeOpen&&!event.target?.closest?.('#feed-filters'))closeRangePanel();
+  if((state.dateMenuOpen||state.rangeOpen)&&!event.target?.closest?.('#feed-filters'))closeRangePanel();
 });
 document.addEventListener?.('keydown',event=>{
-  if(event.key==='Escape'&&state.rangeOpen&&!document.querySelector('dialog[open]')?.open){event.preventDefault();closeRangePanel({restoreFocus:true});}
+  if(event.key==='Escape'&&(state.dateMenuOpen||state.rangeOpen)&&!document.querySelector('dialog[open]')?.open){event.preventDefault();closeRangePanel({restoreFocus:true});}
 },true);
 document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',()=>$('#'+el.dataset.close).close()));
 function showAdd(){ $('#source-error').textContent='';$('#wechat-search-error').textContent='';applyAddPlatform(state.view==='sources'&&state.monitorPlatform?state.monitorPlatform:addPlatform);$('#add-dialog').showModal(); }
@@ -1013,7 +1017,7 @@ $('#copy-key').addEventListener('click',async()=>{try{await navigator.clipboard.
 function syncSourceForm(){const p=$('#source-platform').value,xhs=p==='xiaohongshu';$('#source-url').placeholder=p==='x'?'https://x.com/NASA':xhs?'https://www.xiaohongshu.com/user/profile/…':'http://127.0.0.1:8001/feed/…';$('#source-name').placeholder=xhs?'留空，自动识别':'例如：NASA';$('#url-label').textContent=p==='wechat'?'RSS 链接':'主页链接';$('#source-interval-field').hidden=xhs;$('#source-interval').disabled=xhs;$('#source-interval').value='30';$('#source-note').textContent='';}
 $('#source-platform').addEventListener('change',syncSourceForm);
 $('#source-form').addEventListener('submit',async event=>{event.preventDefault();$('#source-submit').disabled=true;$('#source-error').textContent='';try{const data=Object.fromEntries(new FormData(event.target));const isXhs=data.platform==='xiaohongshu';if(!String(data.url||'').trim()||(!isXhs&&!String(data.name||'').trim())){$('#source-error').textContent=isXhs?'请粘贴博主主页链接':'请填写名称和主页链接';$('#source-submit').disabled=false;return;}if(isXhs){await api('/xhs/add',{method:'POST',body:JSON.stringify({url:data.url,name:data.name})});$('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast('已添加订阅，稍后自动识别博主信息');return;}data.intervalMinutes=Number(data.intervalMinutes);await api('/sources',{method:'POST',body:JSON.stringify(data)});$('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast(state.summary?.access?.[data.platform]?.allowed===false?'订阅已保存，接入待确认':'订阅已添加');}catch(e){$('#source-error').textContent=e.message;}finally{$('#source-submit').disabled=false;}});
-$('#search').addEventListener('input',()=>{clearTimeout(searchTimer);const q=$('#search').value.trim();if(state.view==='sources'){state.monitorQ=q;state.monitorSelected=null;renderSources();return;}if(state.readerId!==null||state.view==='activity')return;if(libraryView()){libraryUi.search(q);return;}rememberFeedView();state.q=q;state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;cancelFeedLoad();articleRequest++;state.articles=state.articles.filter(matchingArticle);renderArticles();renderPeriodCounts();setFeedLoading(true);searchTimer=setTimeout(()=>refreshArticles().catch(e=>toast(e.message)),250);});
+$('#search').addEventListener('input',()=>{clearTimeout(searchTimer);const q=$('#search').value.trim();if(state.view==='sources'){state.monitorQ=q;state.monitorSelected=null;state.monitorDetailOpen=false;state.monitorManageOpen=false;renderSources();return;}if(state.readerId!==null||state.view==='activity')return;if(libraryView()){libraryUi.search(q);return;}rememberFeedView();state.q=q;state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;cancelFeedLoad();articleRequest++;state.articles=state.articles.filter(matchingArticle);renderArticles();renderPeriodCounts();setFeedLoading(true);searchTimer=setTimeout(()=>refreshArticles().catch(e=>toast(e.message)),250);});
 $('#search-history').addEventListener('click',()=>{void selectTab('range');});
 async function loadMorePage(){const pagedViews=state.view==='feed'||state.view==='unread'||state.view==='starred';if(loadingMore||!state.hasMore||!pagedViews)return;loadingMore=true;const button=$('#load-more');button.disabled=true;try{await refreshArticles(true);}catch(e){toast(e.message);}finally{loadingMore=false;button.disabled=false;}
   // A short page can leave the button on screen; keep filling until it leaves.
@@ -1037,7 +1041,8 @@ $('#articles').addEventListener('click',async event=>{if(event.target.closest('v
 $('#articles').addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key)||event.target.closest('button,a,video'))return;const item=event.target.closest('[data-open]');if(item){event.preventDefault();void openReader(Number(item.dataset.open));}});
 $('#sources-list').addEventListener('click',async event=>{
   const select=event.target.closest('[data-source-select]');
-  if(select){state.monitorSelected=select.dataset.sourceSelect;renderSources();return;}
+  if(event.target.closest('[data-monitor-back]')){state.monitorDetailOpen=false;renderSources();scrollPage(state.monitorListScroll);$('[data-source-select="'+state.monitorSelected+'"]')?.focus?.({preventScroll:true});return;}
+  if(select){if(mobileNavigation?.matches)state.monitorListScroll=Number(globalThis.scrollY)||0;state.monitorSelected=select.dataset.sourceSelect;state.monitorDetailOpen=true;state.monitorManageOpen=false;renderSources();if(mobileNavigation?.matches){scrollPage(0);$('.monitor-detail-heading')?.focus?.({preventScroll:true});}return;}
   const remove=event.target.closest('[data-source-delete]');
   if(remove){const source=state.sources.find(s=>s.id===remove.dataset.sourceDelete);if(!source||source.enabled)return;state.deleteSource=source.id;$('#source-delete-name').textContent=source.name;$('#source-delete-error').textContent='';$('#source-delete-dialog').showModal();return;}
   const resume=event.target.closest('[data-weread-resume]');
@@ -1084,10 +1089,11 @@ $('#sources-list').addEventListener('click',async event=>{
   }
   try{await api('/sources/'+id,{method:'PATCH',body:JSON.stringify({enabled:!s.enabled})});await refresh();toast(s.enabled?'已暂停这个订阅':'已恢复这个订阅');}catch(e){toast(e.message);}
 });
-$('#sources-list').addEventListener('change',event=>{if(event.target.id==='monitor-filter'){state.monitorFilter=event.target.value;state.monitorSelected=null;renderSources();}});
+$('#sources-list').addEventListener('toggle',event=>{if(event.target.matches?.('.monitor-management'))state.monitorManageOpen=event.target.open;},true);
+$('#sources-list').addEventListener('change',event=>{if(event.target.id==='monitor-filter'){state.monitorFilter=event.target.value;state.monitorSelected=null;state.monitorDetailOpen=false;state.monitorManageOpen=false;renderSources();$('#monitor-filter').focus?.({preventScroll:true});}});
 $('#source-delete-confirm').addEventListener('click',async()=>{
   const id=state.deleteSource,button=$('#source-delete-confirm');if(!id||button.disabled)return;button.disabled=true;
-  try{await api('/sources/'+id+'/remove',{method:'POST',body:JSON.stringify({confirm:true})});state.deleteSource=null;state.monitorSelected=null;$('#source-delete-dialog').close();await refresh();toast('已删除订阅');}
+  try{await api('/sources/'+id+'/remove',{method:'POST',body:JSON.stringify({confirm:true})});state.deleteSource=null;state.monitorSelected=null;state.monitorDetailOpen=false;state.monitorManageOpen=false;$('#source-delete-dialog').close();await refresh();if(mobileNavigation?.matches)scrollPage(0);toast('已删除订阅');}
   catch(error){$('#source-delete-error').textContent=error.message;}finally{button.disabled=false;}
 });
 $('#source-delete-dialog').addEventListener('close',()=>{state.deleteSource=null;});

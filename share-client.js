@@ -10,7 +10,7 @@ function decorate(){
   const status=document.querySelector('#notification-status'),text=noticeText();if(status&&status.textContent!==text)status.textContent=text;
   const version=document.querySelector('#extension-version');if(version&&version.textContent!=='本设备通知')version.textContent='本设备通知';
   const reload=document.querySelector('#extension-reload');if(reload&&!reload.hidden)reload.hidden=true;
-  const test=document.querySelector('#notification-test');if(test?.disabled)test.disabled=false;
+  const test=document.querySelector('#notification-test'),unavailable=!('Notification'in window)||Notification.permission==='denied';if(test&&test.disabled!==unavailable)test.disabled=unavailable;
 }
 document.addEventListener('click',async event=>{
   if(!event.target.closest('#notification-test'))return;

@@ -12,13 +12,13 @@
   <link rel="stylesheet" href="./reader-shell.css?v=cb1f3f42efe4">
   <link rel="stylesheet" href="./typography.css?v=cb6f7b08e07f">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
-  <link rel="stylesheet" href="./filter-bar.css?v=65c8aec497ec">
+  <link rel="stylesheet" href="./filter-bar.css?v=c177d4d66dc5">
   <script type="module" src="./reader-speech.js?v=c1d3fcc2b5a0"></script>
   <link rel="stylesheet" href="./reader-speech.css?v=1232e056e653">
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
-  <script type="module" src="./share-client.js?v=332512484a5d"></script>
-  <script type="module" src="./app.js?v=307341220873"></script>
+  <script type="module" src="./share-client.js?v=7caffbf8c360"></script>
+  <script type="module" src="./app.js?v=bf1d00b66c7e"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -37,6 +37,8 @@
     <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4m8-4v4M4 10h16M8 14h2m4 0h2"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></symbol>
+    <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
     <symbol id="icon-settings" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="icon-update" viewBox="0 0 24 24"><path d="M4 11a8 8 0 0 1 14-5l2 2M20 3v5h-5M20 13a8 8 0 0 1-14 5l-2-2M4 21v-5h5"/></symbol>
   </svg>
@@ -66,7 +68,7 @@
       <div class="breadcrumbs"><span id="breadcrumb-title">全部动态</span></div>
       <div class="top-actions">
         <label class="workspace-search" id="workspace-search"><svg class="button-icon" aria-hidden="true"><use href="#icon-search"/></svg><input id="search" type="search" placeholder="搜索内容或作者" aria-label="搜索内容或作者" maxlength="100"></label>
-        <button class="connection-control" id="setup-open" aria-label="连接设置"><span class="connection-dot" id="connection-dot"></span><span id="connection-title">未连接</span><svg class="button-icon" aria-hidden="true"><use href="#icon-settings"/></svg></button>
+        <button class="connection-control" id="setup-open" aria-label="设置"><span class="connection-dot" id="connection-dot"></span><span id="connection-title">未连接</span><svg class="button-icon" aria-hidden="true"><use href="#icon-settings"/></svg></button>
       </div>
     </header>
     <main>
@@ -89,6 +91,8 @@
         <button class="platform-nav" data-platform="x">X<span class="nav-count" id="count-x"></span></button>
       </nav>
         <div class="panel-toolbar filter-row" id="feed-filters">
+          <button type="button" id="date-toggle" aria-label="日期筛选：今天" aria-expanded="false" aria-controls="date-menu"><svg class="button-icon" aria-hidden="true"><use href="#icon-calendar"/></svg><span id="date-label">今天</span><svg class="date-chevron button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+          <div id="date-menu" role="group" aria-label="日期筛选" hidden><p class="date-menu-caption">日期筛选 · 北京时间</p>
           <div class="period-tabs" aria-label="日期筛选（北京时间）" title="北京时间">
             <button class="period-tab active" data-tab="today" aria-pressed="true">今天<span class="period-count" id="period-count-today"></span></button>
             <button class="period-tab" data-tab="all" aria-pressed="false">全部日期</button>
@@ -110,6 +114,7 @@
               <button type="button" class="secondary" id="range-clear">清除</button>
               <button type="button" class="primary" id="range-apply">应用</button>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -172,9 +177,9 @@
     </div>
     <p id="library-tag-manager-error" class="form-error" role="status"></p><div class="dialog-actions"><button class="secondary" data-close="library-tag-manager">完成</button></div>
   </dialog>
-  <dialog id="add-dialog">
+  <dialog id="add-dialog" aria-labelledby="add-heading">
     <form id="source-form">
-      <div class="dialog-title"><h2>添加订阅</h2><button type="button" class="icon-button" data-close="add-dialog" aria-label="关闭">×</button></div>
+      <div class="dialog-title"><h2 id="add-heading">添加订阅</h2><button type="button" class="icon-button" data-close="add-dialog" aria-label="关闭">×</button></div>
       <div class="segmented" id="add-platform-tabs" role="tablist" aria-label="平台">
         <button type="button" class="segmented-item" data-add-platform="x" role="tab">X</button>
         <button type="button" class="segmented-item" data-add-platform="xiaohongshu" role="tab">小红书</button>
@@ -192,7 +197,7 @@
 
       <div id="pane-wechat" hidden>
         <div id="wechat-search-form" class="wx-search-form">
-          <input id="wechat-search-input" placeholder="搜索公众号名称，例如：花叔" maxlength="40" autocomplete="off">
+          <input aria-label="公众号名称" id="wechat-search-input" placeholder="搜索公众号名称，例如：花叔" maxlength="40" autocomplete="off">
           <button class="primary" id="wechat-search-submit" type="button">搜索</button>
         </div>
         <p class="form-note" id="wechat-search-note"></p>
@@ -211,14 +216,14 @@
     <div class="dialog-actions"><button type="button" class="secondary" data-close="source-delete-dialog">取消</button><button type="button" class="danger-button" id="source-delete-confirm">删除订阅</button></div>
   </dialog>
 
-  <dialog id="setup-dialog">
-    <div class="dialog-title"><h2>连接设置</h2><button class="icon-button" data-close="setup-dialog" aria-label="关闭">×</button></div>
-    <div class="platform-runtime" id="platform-runtime"></div>
+  <dialog id="setup-dialog" aria-labelledby="setup-heading">
+    <div class="dialog-title setup-title"><span class="setup-symbol"><svg class="button-icon" aria-hidden="true"><use href="#icon-settings"/></svg></span><div><h2 id="setup-heading">设置</h2><p>连接与内容管理</p></div><button type="button" class="icon-button" data-close="setup-dialog" aria-label="关闭设置">×</button></div>
+    <section class="settings-group"><h3>平台连接</h3><div class="platform-runtime" id="platform-runtime"></div></section>
+    <section class="settings-group settings-notifications"><div class="runtime-row"><span id="extension-version"></span><button class="secondary" id="notification-test">测试通知</button></div><p id="extension-reload" hidden>扩展待刷新</p><p id="notification-status" role="status"></p></section>
+    <div class="setup-export"><a href="/api/export" download><svg class="button-icon" aria-hidden="true"><use href="#icon-download"/></svg><span><strong>导出已保存内容</strong><small>保存一份本地副本</small></span><svg class="button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></a></div>
     <details class="setup-section setup-advanced"><summary>扩展连接</summary><div class="setup-section"><label>扩展目录</label><code id="extension-path"></code></div><div class="setup-section"><label for="bridge-key">配对码</label><div class="key-row"><input id="bridge-key" type="password" readonly><button class="secondary" id="copy-key">复制</button></div></div></details>
-    <div class="setup-section"><div class="runtime-row"><span id="extension-version"></span><button class="secondary" id="notification-test">测试通知</button></div><p id="extension-reload" hidden>扩展待刷新</p><p id="notification-status" role="status"></p></div>
     <div class="setup-rss" hidden><a href="http://127.0.0.1:47822/" target="_blank" rel="noopener noreferrer">连接公众号 ↗</a></div>
-    <div class="setup-export"><a href="./api/export" download>导出已保存内容 ↗</a></div>
-    <button class="primary full-width" data-close="setup-dialog">完成</button>
+    <div class="dialog-actions"><button type="button" class="secondary" data-close="setup-dialog">完成</button></div>
   </dialog>
   <div id="toast" role="status" hidden></div>
 </body>

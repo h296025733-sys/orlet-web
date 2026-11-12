@@ -28,13 +28,14 @@ body :is(button, a, input, select, textarea):focus-visible { outline: 2px solid 
 .brand img { width: 28px; height: 28px; border-radius: 0; filter: grayscale(1) brightness(.7) }
 .breadcrumbs { display: none }
 .top-actions { display: flex; align-items: center; flex: 1; min-width: 0; gap: 24px; margin: 0; padding-left: 24px }
-.workspace-search { display: flex; align-items: center; width: min(420px, 44vw); min-width: 180px; max-width: 420px; height: 44px; padding: 0 16px; gap: 10px; background: #eef2f5; border: 1px solid transparent; border-radius: 999px }
+.workspace-search { display: flex; align-items: center; width: min(420px, 44vw); min-width: 180px; max-width: 420px; height: 44px; padding: 0 16px; gap: 10px; background: #f5f7f9; border: 1px solid #e2e8ee; border-radius: 14px }
 .workspace-search:focus-within { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px #315d8014 }
 .workspace-search input { font-size: 14px; color: var(--ink) }
 .workspace-search .button-icon { color: var(--muted) }
 .search-shortcut { border-color: var(--line); border-radius: 3px; color: var(--subtle); background: transparent }
-.connection-control { margin-left: auto; min-height: 44px; padding: 8px 12px; gap: 8px; border: 0; border-radius: 999px; background: #eef2f5; color: var(--muted); font-size: 12px }
+.connection-control { position: relative; margin-left: auto; min-height: 44px; padding: 8px 12px; gap: 8px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font-size: 12px }
 .connection-control .button-icon { display: block; width: 18px; height: 18px; color: var(--muted) }
+.connection-control:hover, .mobile-nav-toggle:hover { background: #eef3f7 }
 .mobile-nav-toggle { display: none }
 .sidebar, .monitor-mode .sidebar { display: flex; position: fixed; inset: var(--topbar-height) auto 0 0; width: var(--sidebar-width); padding: 24px 14px 16px; background: var(--sidebar); border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; color: var(--ink) }
 .sidebar-heading { display: none }
@@ -65,42 +66,54 @@ body :is(button, a, input, select, textarea):focus-visible { outline: 2px solid 
 .shell, .reading-mode .shell { margin-left: var(--sidebar-width); padding-top: var(--topbar-height); min-width: 0 }
 main, .monitor-mode main { width: 100%; max-width: 1440px; margin: 0 auto; padding: 28px 40px 64px }
 
-/* Content modes are navigation; platform and date are supporting filters. */
-.workspace-heading { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px }
+/* An index rail leads; platform and date remain supporting controls. */
+.workspace-heading { display: flex; flex-direction: column; gap: 16px; margin-bottom: 8px }
 .workspace-heading:has(> #content-controls[hidden]):has(> #page-title[hidden]) { display: none }
 .content-controls { position: static; display: flex; padding: 0; margin: 0; background: transparent }
-.content-tabs { display: flex; align-items: stretch; flex-wrap: wrap; gap: 4px; width: fit-content; max-width: 100%; padding: 4px; background: #e3eaf0; border: 0; border-radius: 28px }
-.content-tab { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 1 1 auto; gap: 8px; min-width: 112px; min-height: 46px; padding: 8px 24px; border: 0; border-radius: 999px; background: transparent; color: #526779; font-size: 18px; font-weight: 500; line-height: 1.5; letter-spacing: 0; white-space: nowrap }
-.content-tab .button-icon { width: 20px; height: 20px; stroke-width: 1.5 }
-.content-tab:hover { color: var(--ink); background: #f7fafc }
-.content-tab.active, .content-tab[aria-pressed="true"] { color: #fff; background: var(--accent); box-shadow: 0 2px 4px #24415a18; font-weight: 700 }
+.content-tabs { display: flex; align-items: stretch; flex-wrap: nowrap; width: 100%; max-width: 400px; padding: 0; gap: 4px; border: 0; border-bottom: 1px solid #cbd6df; border-radius: 0; background: transparent }
+.content-tab { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 1 1 0; gap: 8px; min-width: 0; min-height: 56px; padding: 8px 12px; border: 0; border-radius: 9px 9px 0 0; color: #75818c; font-size: 22px; font-weight: 500; background: transparent; line-height: 1.5; white-space: nowrap }
+.content-tab.active, .content-tab[aria-pressed="true"] { color: #fff; background: #263b4b; box-shadow: none; font-weight: 650 }
+.content-tab:hover:not(.active) { color: var(--ink); background: #e8eef3 }
 .content-tab.active::after { content: none }
-.content-tab .period-count { font-size: 12px; padding: 0; margin: 0; background: transparent; color: inherit; letter-spacing: 0 }
+.content-tab .button-icon { width: 19px; height: 19px; stroke-width: 1.5 }
+.content-tab .period-count { font-size: 12px; padding: 0; margin: 0; color: inherit; background: transparent }
 .page-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 }
 .page-title h1, #page-heading { font-size: 28px; font-weight: 500; line-height: 1.45; color: var(--ink-strong); letter-spacing: -.025em }
 .page-subtitle { display: none }
-.filter-toolbar { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px 24px; position: relative; z-index: 30; margin: 0 0 12px; padding: 0; border: 0; background: transparent }
+.filter-toolbar { position: relative; z-index: 30; display: flex; align-items: center; justify-content: flex-start; flex-wrap: nowrap; gap: 24px; margin: 0 0 4px; padding: 0; border: 0; background: transparent }
 .filter-toolbar:has(> #workspace-platforms[hidden]):has(> #feed-filters[hidden]) { display: none }
-.filter-toolbar:has(#range-panel:not([hidden])) { z-index: 60 }
-.workspace-platforms, .monitor-mode .workspace-platforms { display: flex; align-items: center; flex-wrap: wrap; width: auto; margin: 0; padding: 0; gap: 8px; border: 0; background: transparent }
-.workspace-platforms .platform-nav { min-width: 54px; min-height: 40px; height: auto; padding: 8px 16px; border: 1px solid transparent; border-radius: 999px; background: #e8edf2; color: #536779; font-size: 14px; font-weight: 500 }
-.workspace-platforms .platform-nav:first-child { margin-left: 0 }
-.workspace-platforms .platform-nav.active { color: #274e6e; background: #d8e6f2; border-color: #abc4d8; box-shadow: none; font-weight: 600 }
-.workspace-platforms .platform-nav:hover:not(.active) { color: var(--accent); background: #dfe8ef; border-color: transparent }
+.filter-toolbar:has(#date-menu:not([hidden])) { z-index: 60 }
+.workspace-platforms, .monitor-mode .workspace-platforms { display: flex; align-items: center; flex: 0 1 auto; width: auto; min-width: 0; flex-wrap: nowrap; margin: 0; padding: 0; gap: 0; border: 0; background: transparent }
+.workspace-platforms .platform-nav { position: relative; min-height: 44px; height: auto; min-width: 0; flex: 0 1 auto; padding: 8px 12px; border: 0; border-radius: 0; background: transparent; font-size: 14px; font-weight: 500; color: #76828d; white-space: nowrap }
+.workspace-platforms .platform-nav:first-child { padding-left: 2px; margin: 0 4px 0 0 }
+.workspace-platforms .platform-nav.active { background: transparent; border: 0; color: #263b4b; box-shadow: none; font-weight: 650 }
+.workspace-platforms .platform-nav.active::after { content: ""; position: absolute; inset: auto 12px 4px; height: 2px; background: #315d80 }
+.workspace-platforms .platform-nav:first-child.active::after { left: 2px }
+.workspace-platforms .platform-nav:hover:not(.active) { background: transparent; color: var(--accent); border-color: transparent }
 .workspace-platforms .nav-count { color: inherit }
-#feed-filters { position: relative; display: block; flex: 0 1 auto; min-width: 0; padding: 0; margin: 0; border: 0 }
-.period-tabs { display: flex; width: auto; min-width: 0; gap: 3px; padding: 3px; border: 0; border-radius: 26px; background: #e8edf2 }
-.period-tab { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 70px; min-height: 38px; padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: #536779; font-size: 14px; font-weight: 500; line-height: 1.5; white-space: nowrap }
-.period-tab.active { color: #274e6e; background: #fff; box-shadow: 0 1px 4px #29445b1c; font-weight: 600 }
-.period-tab:hover { color: var(--accent); background: #f9fbfd }
-.period-tab .button-icon { width: 14px; height: 14px; color: inherit }
-.period-count { margin: 0; padding: 0 2px; color: var(--muted); font-size: 11px; background: transparent; border-radius: 0 }
-.period-tab.active .period-count { color: inherit }
-#range-label { padding: 0; margin: 0; background: transparent; color: inherit; font-size: 11px }
-#range-tab[aria-expanded="true"] { color: var(--accent); background: #d8e6f2; box-shadow: inset 0 0 0 1px #abc4d8 }
+#feed-filters { display: block; position: relative; flex: 0 0 auto; min-width: 0; width: auto; align-self: auto; padding: 0; margin: 0; border: 0 }
+#date-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; min-width: 110px; padding: 8px 12px; border: 1px solid #d4dfe7; border-radius: 10px; background: #fff; color: #315d80; font-size: 13px; font-weight: 500; white-space: nowrap }
+#date-toggle .button-icon { width: 17px; height: 17px }
+#date-toggle .date-chevron { width: 11px; height: 11px; transform: rotate(90deg); color: #8195a3 }
+#date-toggle[aria-expanded="true"] { border-color: #8daabe; box-shadow: 0 0 0 3px #315d800d }
+#date-toggle[aria-expanded="true"] .date-chevron { transform: rotate(-90deg) }
+#date-menu { position: absolute; inset: calc(100% + 8px) 0 auto auto; z-index: 40; width: 360px; max-width: calc(100vw - 24px); padding: 16px; border: 1px solid #d5dee4; border-radius: 14px; background: #fff; box-shadow: 0 14px 40px #24323d24; overflow-y: auto; overscroll-behavior: contain }
+.filter-toolbar:has(> #workspace-platforms[hidden]) #date-menu { right: auto; left: 0 }
+.date-menu-caption { margin: 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.6 }
+.period-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: 100%; min-width: 0; gap: 6px; padding: 0; border: 0; border-radius: 0; background: transparent }
+.period-tab { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 44px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; background: #f2f5f8; color: #536779; font-size: 13px; font-weight: 500; line-height: 1.5; white-space: normal }
+.period-tab.active { color: #274e6e; background: #e5eef6; border-color: #b5cadb; box-shadow: none; font-weight: 600 }
+.period-tab:hover { color: var(--accent); background: #eaf0f5 }
+.period-tab .button-icon { width: 14px; height: 14px }
+.period-count { margin: 0; padding: 0 2px; color: inherit; font-size: 11px; background: transparent; border-radius: 0 }
+#range-tab { flex-wrap: wrap; align-content: center }
+#range-label { padding: 0; margin: 0; flex-basis: 100%; color: inherit; background: transparent; font-size: 11px }
+#range-label:empty { display: none }
+#range-tab[aria-expanded="true"] { color: var(--accent); border-color: #b5cadb; background: #e5eef6; box-shadow: none }
+
 
 /* A real floating surface is reserved for a temporary task. */
-#range-panel { position: absolute; inset: calc(100% + 10px) 0 auto auto; z-index: 40; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; width: 384px; max-width: calc(100vw - 32px); margin: 0; padding: 20px; border: 1px solid #d5dee4; border-radius: 8px; background: var(--surface); box-shadow: 0 16px 42px #24323d1f, 0 2px 5px #24323d08; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin }
+#range-panel { position: static; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: none; padding: 14px 0 0; margin: 14px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; overflow: visible }
 .range-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px }
 .range-panel-heading strong { font-size: 16px; font-weight: 500; color: var(--ink) }
 #range-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 23px; line-height: 1 }
@@ -118,7 +131,7 @@ main, .monitor-mode main { width: 100%; max-width: 1440px; margin: 0 auto; paddi
 /* Articles are a reading sequence. Each item's information stays together. */
 .feed-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0 0 10px; padding: 0; border: 0; color: var(--muted); font-size: 13px }
 #feed-count { font-size: 12px; color: var(--muted); letter-spacing: .02em }
-.feed-meta #read-all { display: inline-flex; align-items: center; min-height: 36px; height: auto; padding: 6px 12px; margin-left: auto; width: auto; max-width: 100%; border: 0; border-radius: 999px; color: #506a7e; background: #e8edf2; font-size: 12px; font-weight: 500; line-height: 1.5; white-space: normal }
+.feed-meta #read-all { display: inline-flex; align-items: center; min-height: 36px; height: auto; padding: 6px 12px; margin-left: auto; width: auto; max-width: 100%; border: 0; border-radius: 999px; color: #506a7e; background: transparent; font-size: 12px; font-weight: 500; line-height: 1.5; white-space: normal }
 .feed-meta #read-all::before { content: "✓"; margin-right: 6px; color: var(--muted) }
 .feed-meta #read-all:hover:not(:disabled) { color: var(--accent) }
 .feed-meta .timezone-label, .group-heading { display: none }
@@ -186,13 +199,44 @@ dialog label, dialog p { line-height: 1.75 }
 dialog input, dialog select, dialog textarea { border-color: #ccd7df; background: #fff; border-radius: 5px; color: var(--ink) }
 dialog .dialog-actions { gap: 10px }
 .icon-button { color: var(--muted) }
-#setup-dialog .setup-advanced > summary { color: var(--muted); font-size: 13px; min-height: 44px; padding-block: 10px }
-#setup-dialog .setup-section :is(label,p), #setup-dialog .runtime-row, #setup-dialog .setup-export { color: var(--muted); font-size: 13px }
+#setup-dialog, #add-dialog { border-radius: 18px; padding: 26px; width: min(460px, calc(100vw - 32px)) }
+#setup-dialog .setup-title { gap: 12px; align-items: center; margin-bottom: 24px }
+.setup-symbol { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 14px; color: var(--accent); background: var(--accent-soft) }
+.setup-symbol .button-icon { width: 23px; height: 23px }
+#setup-dialog .dialog-title h2, #add-dialog .dialog-title h2 { font-size: 23px; font-weight: 600 }
+#setup-dialog .setup-title p { margin: 3px 0 0; color: var(--muted); font-size: 12px }
+#setup-dialog .setup-title .icon-button { margin-left: auto; align-self: flex-start }
+#setup-dialog .icon-button, #add-dialog .icon-button { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0 }
+#setup-dialog .settings-group { margin: 0 0 22px }
+#setup-dialog .settings-group h3 { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em }
+#setup-dialog .platform-runtime { margin: 0; padding: 0 14px; border: 1px solid #e0e7ec; border-radius: 14px; background: #f8fafb }
+#setup-dialog .platform-runtime-row { min-height: 52px; padding: 10px 0; border-color: #e3e9ee; font-size: 14px; font-weight: 500 }
+#setup-dialog .runtime-state { flex-shrink: 0; color: #43634f; background: #e9f1eb; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 500 }
+#setup-dialog .runtime-state.warn { color: #866027; background: #f8efdf }
+#setup-dialog .runtime-row { font-size: 14px; font-weight: 600; color: var(--ink) }
+#setup-dialog .runtime-row button { min-height: 44px; padding: 8px 14px; font-size: 13px; background: var(--accent-soft); border-color: transparent; color: var(--accent); white-space: nowrap }
+#setup-dialog #notification-status, #setup-dialog #extension-reload { margin: 8px 0 0; font-size: 12px; line-height: 1.75; color: var(--muted); text-wrap: wrap }
+#setup-dialog .setup-export { display: block; margin: 0 0 18px }
+#setup-dialog .setup-export a { display: flex; align-items: center; gap: 12px; min-height: 70px; padding: 12px 14px; border-radius: 14px; background: #f1f5f8; color: var(--accent); text-decoration: none }
+#setup-dialog .setup-export a:hover { background: var(--accent-soft) }
+#setup-dialog .setup-export a > .button-icon { width: 22px; height: 22px; flex-shrink: 0 }
+#setup-dialog .setup-export a > .button-icon:last-child { width: 16px; margin-left: auto; color: #80919e }
+#setup-dialog .setup-export strong { display: block; font-size: 14px; font-weight: 600 }
+#setup-dialog .setup-export small { display: block; font-size: 12px; margin-top: 4px; color: var(--muted) }
+#setup-dialog .setup-advanced { margin: 0 0 10px; border-top: 1px solid var(--line) }
+#setup-dialog .setup-advanced > summary { color: var(--muted); font-size: 13px; min-height: 44px; padding-block: 12px; cursor: pointer }
+#setup-dialog .setup-section :is(label,p) { color: var(--muted); font-size: 13px }
 #setup-dialog .setup-section code { color: var(--muted); background: #f0f3f5; font-size: 12px }
-#setup-dialog .platform-runtime { border-color: var(--line); border-radius: 5px }
-#setup-dialog .platform-runtime-row { border-color: var(--line); font-size: 14px }
-#setup-dialog .runtime-state { color: #426447; font-size: 12px }
-#setup-dialog .runtime-state.warn { color: #866027 }
+#setup-dialog .dialog-actions { margin: 0; padding: 4px 0 0 }
+#setup-dialog .dialog-actions button { min-height: 44px; padding: 8px 24px; border: 0; background: #eef2f5; font-size: 14px }
+#add-dialog .segmented { padding: 4px; gap: 4px; border: 0; border-radius: 999px; background: #eaf0f5 }
+#add-dialog .segmented-item { min-height: 44px; border-radius: 999px; font-size: 14px; font-weight: 500 }
+#add-dialog .segmented-item.active { color: var(--accent); font-weight: 600; box-shadow: 0 1px 4px #29445b12 }
+#add-dialog :is(input,select) { min-height: 44px; border-radius: 10px }
+#add-dialog :is(.dialog-actions button,.wx-search-form button,.wx-result button) { min-height: 44px; border-radius: 999px; padding-inline: 16px; font-size: 14px }
+#add-dialog .wx-search-form { align-items: center; gap: 8px }
+#add-dialog .wx-search-form input { min-width: 0 }
+
 .analysis-title, .analysis-coverage, .form-note { color: var(--muted); line-height: 1.75 }
 .analysis-dialog .dialog-title { background: #fff }
 .segmented { background: #f1f4f6; border-color: #dfe6eb; border-radius: 6px }
@@ -280,26 +324,52 @@ dialog .dialog-actions { gap: 10px }
 .article button[data-read], .reader-actions #reader-read { border: 0; background: transparent; color: #607585; text-decoration: underline; text-decoration-color: #b0c0cc; text-underline-offset: 4px }
 .article button[data-read]:hover, .reader-actions #reader-read:hover { background: #edf2f6; color: #315d80; text-decoration-color: currentColor }
 .library-card[data-kind="quotes"] [data-library-remove]:hover { color: #9a4e49; background: #f9eeec }
-/* Monitoring remains a directory and its details, not another feed. */
-.monitor-browser { display: grid; grid-template-columns: minmax(210px, .75fr) minmax(0, 1.5fr); gap: 32px }
-.monitor-list, .monitor-detail { background: #fff; border: 1px solid #e0e6ec; border-radius: 14px; box-shadow: 0 2px 8px #243b5005 }
-.monitor-list { padding: 16px; border-right: 1px solid #d4dfe8 }
-.monitor-list-heading { padding: 0 4px 16px; color: var(--muted); font-size: 12px }
-.monitor-list-heading select { min-height: 36px; color: var(--muted); border-color: #d4dfe6; border-radius: 5px }
-.monitor-items { max-height: calc(100dvh - 280px); scrollbar-color: #ccd6dd transparent }
-.monitor-item { padding: 13px 12px; border-radius: 5px; color: #506270 }
-.monitor-item strong { font-size: 14px; line-height: 1.5; font-weight: 400 }
-.monitor-item-meta { font-size: 12px; line-height: 1.6; color: var(--muted) }
+/* Monitoring: scan the directory, then act on one subscription. */
+.monitor-browser { display: grid; grid-template-columns: minmax(240px, .85fr) minmax(0, 1.7fr); align-items: start; gap: 24px }
+.monitor-list, .monitor-detail { min-width: 0; background: #fff; border: 1px solid #e0e6ec; border-radius: 16px; box-shadow: 0 2px 8px #243b5005 }
+.monitor-list { padding: 12px }
+.monitor-list-heading { min-height: 56px; padding: 0 6px 12px; color: var(--muted); font-size: 13px }
+.monitor-list-heading strong { font-weight: 600; color: var(--ink) }
+.monitor-list-heading select { max-width: 132px; min-height: 44px; padding: 7px 12px; color: #506777; border-color: #dae3ea; background: #f6f8fa; border-radius: 999px; font-size: 13px }
+.monitor-items { display: block; max-height: calc(100dvh - 300px); overflow: auto; overscroll-behavior: contain; scrollbar-color: #ccd6dd transparent }
+.monitor-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; width: 100%; min-width: 0; min-height: 72px; margin: 0; padding: 12px 10px; gap: 10px; border: 0; border-radius: 10px; color: #42596a; text-align: left }
+.monitor-item-copy { min-width: 0 }
+.monitor-item strong { display: block; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; font-size: 14px; line-height: 1.5; font-weight: 600; text-wrap: wrap }
+.monitor-item-meta { margin-top: 3px; font-size: 11px; line-height: 1.6; color: var(--muted) }
+.monitor-item-tail { display: flex; align-items: center; gap: 4px }
+.monitor-item-tail .button-icon { display: none; width: 14px; height: 14px; color: #96a5b0 }
+.monitor-avatar { width: 36px; height: 36px; min-width: 36px; background: #eef2f5; color: #667f90 }
 .monitor-item.active { background: var(--accent-soft); color: #294f6e; box-shadow: inset 2px 0 var(--accent) }
 .monitor-item.active .monitor-item-meta { color: #5d7689 }
-.monitor-detail { padding: 24px; min-height: 260px }
-.monitor-detail .source-name { font-size: 24px; font-weight: 500; line-height: 1.5; letter-spacing: -.02em; color: var(--ink-strong) }
-.monitor-detail .source-main p { font-size: 13px; color: var(--muted); line-height: 1.7 }
-.monitor-dates { color: var(--muted); font-size: 12px; line-height: 1.75 }
-.source-actions button { min-height: 42px; font-size: 13px }
-.status-badge { font-size: 11px; line-height: 1.5; padding: 3px 8px; border-radius: 3px; color: #426447; background: #eaf2e9 }
+.monitor-detail { padding: 24px; min-height: 0 }
+.monitor-back { display: none }
+.monitor-detail .source-row { display: flex; align-items: center; gap: 14px }
+.monitor-detail .source-main { flex: 1; min-width: 0 }
+.monitor-detail .source-face { width: 52px; height: 52px; min-width: 52px }
+.monitor-detail .source-name { font-size: 24px; font-weight: 600; line-height: 1.4; letter-spacing: -.02em; color: var(--ink-strong); text-wrap: wrap }
+.monitor-detail .source-main p { margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.6 }
+.monitor-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 22px 0 0; padding: 16px 0; border-block: 1px solid #e5ebf0; color: var(--ink); font-size: 14px; line-height: 1.6 }
+.monitor-dates dt { color: var(--muted); font-size: 12px; margin-bottom: 4px }
+.monitor-dates dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; font-variant-numeric: tabular-nums }
+.monitor-detail .source-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px }
+.monitor-detail .source-actions button, .source-recovery button, .source-manage-actions button { min-height: 44px; padding: 9px 18px; font-size: 14px; border-radius: 999px }
+.monitor-detail .source-actions .primary { display: flex; align-items: center; justify-content: center; gap: 20px; min-width: 140px }
+.monitor-detail .source-actions .secondary { border-color: transparent; background: #edf2f6; color: #506b7e }
+.monitor-management { margin-top: 18px; border-top: 1px solid #e5ebf0 }
+.monitor-management summary { padding: 12px 0; min-height: 44px; cursor: pointer; color: var(--muted); font-size: 13px }
+.monitor-management p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.7; text-wrap: wrap }
+.source-manage-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 4px }
+.source-recovery { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px }
+.monitor-detail .source-error { padding: 12px 14px; margin-top: 16px; border-left: 2px solid #c5a16c; border-radius: 0 8px 8px 0; background: #faf5ea; color: #806241; font-size: 13px; line-height: 1.75; overflow-wrap: anywhere }
+.status-badge { flex-shrink: 0; font-size: 11px; font-weight: 500; line-height: 1.5; padding: 3px 8px; border-radius: 999px; color: #426447; background: #eaf2e9 }
 .status-badge.warn { color: #866027; background: #fbf0dc }
 .status-badge.paused { color: #65717c; background: #edf0f2 }
+.monitor-list-empty, .monitor-empty { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px 16px; gap: 10px; color: var(--muted); text-align: center }
+.monitor-list-empty .button-icon, .monitor-empty .button-icon { width: 26px; height: 26px; margin-bottom: 6px; color: #7791a5 }
+.monitor-list-empty strong, .monitor-empty strong { font-size: 15px; color: #4b6375; font-weight: 500; text-wrap: wrap }
+.monitor-list-empty p, .monitor-empty p { margin: 0; font-size: 13px; line-height: 1.7; text-wrap: wrap }
+.monitor-mode .page-title h1 { font-size: 28px; font-weight: 600; letter-spacing: -.03em }
+.monitor-mode .page-title #add-open { border-radius: 999px; min-height: 44px; padding: 9px 16px; font-size: 14px }
 
 /* The reading column has its own measure; toolbar order follows the HTML. */
 .reader-view { max-width: 960px; margin: 0 auto; border: 1px solid #e0e6ec; border-radius: 14px; background: #fff; box-shadow: 0 2px 8px #243b5005; overflow: visible }
@@ -325,15 +395,15 @@ dialog .dialog-actions { gap: 10px }
   :root { --sidebar-width: 210px }
   .brand { flex-basis: 162px }
   main, .monitor-mode main { padding: 28px 32px 64px }
-  .monitor-browser { grid-template-columns: minmax(0, 1fr); gap: 24px }
-  .monitor-list { padding: 16px; border: 1px solid #d4dfe8 }
-  .monitor-items { display: flex; max-height: none; gap: 8px; overflow-x: auto }
-  .monitor-item { flex: 0 0 190px; width: 190px; min-width: 190px }
+  .monitor-browser { grid-template-columns: minmax(220px, .9fr) minmax(0, 1.4fr); gap: 18px }
+  .monitor-detail { padding: 20px }
 }
 @media (max-width: 980px) and (min-width: 701px) {
+  .monitor-browser { grid-template-columns: minmax(0, 1fr); gap: 18px }
+  .monitor-items { max-height: 260px }
   main, .monitor-mode main { padding-inline: 24px }
-  .filter-toolbar { align-items: flex-start; flex-direction: column; gap: 4px }
-  #range-panel { right: auto; left: 0; width: min(384px, calc(100vw - var(--sidebar-width) - 48px)) }
+  .filter-toolbar { align-items: center; flex-direction: row; gap: 16px }
+  #date-menu { max-width: min(360px, calc(100vw - var(--sidebar-width) - 48px)) }
   .reader-navigation { flex-basis: 100% }
   .reader-actions { flex-basis: 100%; border-left: 0; border-top: 1px solid var(--line); padding: 4px 0 0 }
 }
@@ -344,14 +414,15 @@ dialog .dialog-actions { gap: 10px }
   body.nav-open { overflow: hidden }
   .topbar { height: auto; min-height: 60px; padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); gap: 6px; flex-wrap: nowrap }
   .topbar::before { display: none }
-  .mobile-nav-toggle, .monitor-mode .mobile-nav-toggle { display: grid; place-items: center; order: 0; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: #eef2f5; color: #506270 }
+  .mobile-nav-toggle, .monitor-mode .mobile-nav-toggle { display: grid; place-items: center; order: 0; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #506270 }
   .brand { display: flex; align-items: center; justify-content: center; order: 1; flex: 0 0 44px; width: 44px; min-height: 44px; font-size: 24px; gap: 8px }
-  .brand img { width: 25px; height: 25px }
+  .brand img { width: 27px; height: 27px }
   .topbar:has(#workspace-search:not([hidden])) .brand span { display: none }
   .topbar:has(#workspace-search[hidden]) .brand { flex: 1; width: auto; justify-content: flex-start }
   .top-actions { display: contents }
-  .connection-control, .reading-mode .connection-control { display: flex; order: 3; flex: 0 0 44px; width: 44px; height: 44px; margin: 0; padding: 0; justify-content: center; border: 0; background: #eef2f5 }
-  .connection-control #connection-title, .connection-control .connection-dot { display: none }
+  .connection-control, .reading-mode .connection-control { display: flex; order: 3; flex: 0 0 44px; width: 44px; height: 44px; margin: 0; padding: 0; justify-content: center; border: 0; background: transparent }
+  .connection-control #connection-title { display: none }
+  .connection-control .connection-dot { display: block; position: absolute; right: 9px; top: 7px; width: 6px; height: 6px; outline: 2px solid #fff }
   .connection-control .button-icon { display: block; width: 20px; height: 20px; margin: 0 }
   .workspace-search { display: flex; order: 2; flex: 1 1 0; width: auto; min-width: 0; max-width: none; height: 44px; min-height: 44px; padding: 0 12px; gap: 6px }
   .workspace-search input { font-size: 16px }
@@ -369,21 +440,24 @@ dialog .dialog-actions { gap: 10px }
   .author-platform { font-size: 12px }
   #author-add { width: 44px; height: 44px }
   main, .monitor-mode main { max-width: 100%; padding: 12px max(12px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) }
-  .workspace-heading { gap: 12px; margin-bottom: 12px }
-  .content-tabs { gap: 4px; justify-content: stretch; width: 100% }
-  .content-tab { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 8px 6px; font-size: 16px; line-height: 1.5; gap: 6px }
+  .workspace-heading { gap: 12px; margin-bottom: 8px }
+  .content-tabs { width: 100%; max-width: none; gap: 4px }
+  .content-tab { flex: 1 1 0; min-width: 0; min-height: 52px; padding: 8px 10px; font-size: 21px; line-height: 1.5; gap: 7px }
   .content-tab .button-icon { width: 18px; height: 18px }
-  .filter-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: 8px; padding: 0; margin: 0 0 8px }
-  .workspace-platforms, .monitor-mode .workspace-platforms { flex-wrap: wrap; gap: 6px; width: 100% }
-  .workspace-platforms .platform-nav { flex: 1 1 auto; min-height: 44px; min-width: 44px; padding: 7px 10px; font-size: 13px; line-height: 1.5 }
-  #feed-filters { align-self: stretch; width: 100% }
+  .filter-toolbar { align-items: center; flex-direction: row; flex-wrap: nowrap; justify-content: space-between; gap: 8px; padding: 0; margin: 0 }
+  .workspace-platforms, .monitor-mode .workspace-platforms { flex: 1; flex-wrap: nowrap; gap: 0; width: auto }
+  .workspace-platforms .platform-nav { flex: 0 1 auto; min-height: 44px; min-width: 0; padding: 8px 10px; font-size: 13px; line-height: 1.5 }
+  .workspace-platforms .platform-nav.active::after { right: 10px; left: 10px }
+  .workspace-platforms .platform-nav:first-child.active::after { left: 2px }
+  #feed-filters { align-self: auto; width: auto; flex: 0 0 auto }
+  #date-toggle { min-width: 104px; padding-inline: 10px }
   .period-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: 3px; border: 0 }
   .period-tab { min-width: 0; min-height: 44px; padding: 7px 3px; font-size: 13px; line-height: 1.5; white-space: normal; margin: 0 }
   .period-count { font-size: 12px; line-height: 1.4 }
   #range-tab { flex-wrap: wrap; align-content: center; gap: 2px 5px }
   #range-label { flex-basis: 100%; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere }
   #range-label:empty { display: none }
-  #range-panel { inset: calc(100% + 8px) auto auto 0; width: 100%; max-width: 384px; padding: 16px; gap: 14px }
+  #range-panel { width: 100%; max-width: none; padding: 12px 0 0; gap: 12px }
   #range-close { width: 44px; height: 44px }
   .range-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
   .range-preset { min-height: 44px; padding: 9px 4px; font-size: 13px; line-height: 1.5 }
@@ -463,13 +537,34 @@ dialog .dialog-actions { gap: 10px }
   .library-card-foot button:active { background: var(--accent-soft) }
   #library-tag-dialog, #library-tag-manager { padding: 22px 20px; border-radius: 16px }
   #library-tag-dialog .dialog-actions, #library-tag-manager .dialog-actions { bottom: -22px; margin-top: 16px; padding: 12px 0 max(12px,env(safe-area-inset-bottom)); background: #fff }
-  .monitor-browser { grid-template-columns: minmax(0, 1fr); gap: 12px }
-  .monitor-list { padding: 12px; border: 1px solid #d4dfe8 }
-  .monitor-items { display: flex; gap: 8px; max-height: none; overflow-x: auto }
-  .monitor-item { flex: 0 0 190px; min-width: 190px; width: 190px }
-  .monitor-detail { padding: 18px; min-height: 250px }
+  .monitor-browser { display: block }
+  .monitor-browser[data-detail-open="false"] .monitor-detail, .monitor-browser[data-detail-open="true"] .monitor-list { display: none }
+  .monitor-list { padding: 10px }
+  .monitor-list-heading { padding: 0 4px 10px; font-size: 13px }
+  .monitor-list-heading select { font-size: 16px; min-height: 44px }
+  .monitor-items { display: block; max-height: none; overflow: visible }
+  .monitor-item { width: 100%; min-width: 0; min-height: 72px; padding: 12px 6px; gap: 10px; border-radius: 0; border-bottom: 1px solid #edf1f4 }
+  .monitor-item:last-child { border-bottom: 0 }
+  .monitor-item.active { background: transparent; box-shadow: none; color: #42596a }
+  .monitor-item strong { font-size: 15px }
+  .monitor-item-meta { font-size: 12px }
+  .monitor-item-tail .button-icon { display: block }
+  .monitor-detail { padding: 16px; min-height: 0 }
+  .monitor-back { display: flex; align-items: center; gap: 8px; width: fit-content; min-height: 44px; padding: 0 4px; margin: -6px 0 14px; color: var(--accent); font-size: 14px; font-weight: 500; border: 0; background: transparent }
+  .monitor-detail .source-row { gap: 10px; flex-wrap: wrap }
+  .monitor-detail .source-main { min-width: 120px }
+  .monitor-detail .source-face { width: 44px; height: 44px; min-width: 44px }
   .monitor-detail .source-name { font-size: 22px }
-  .monitor-list-heading select, .source-actions button { min-height: 44px; font-size: 13px }
+  .monitor-detail .source-main p { font-size: 12px }
+  .monitor-dates { margin-top: 20px; gap: 12px; font-size: 13px }
+  .monitor-detail .source-actions .primary { flex: 1; min-width: 0; gap: 12px }
+  .monitor-detail .source-actions button { padding: 9px 16px; font-size: 14px }
+  .monitor-mode .page-title h1 { font-size: 25px }
+  .monitor-mode .page-title #add-open { font-size: 13px; padding-inline: 14px }
+  #setup-dialog, #add-dialog { position: fixed; inset: auto 0; top: calc(var(--visual-top, 0px) + var(--visual-height, 100dvh) / 2); transform: translateY(-50%); margin: 0 auto; padding: 22px 20px; max-height: calc(var(--visual-height, 100dvh) - 24px); overscroll-behavior: contain; scroll-padding-bottom: 72px }
+  #setup-dialog .dialog-title h2, #add-dialog .dialog-title h2 { font-size: 22px }
+  #setup-dialog .dialog-actions, #add-dialog .dialog-actions { position: sticky; bottom: -22px; padding: 12px 0 max(12px, env(safe-area-inset-bottom)); margin-top: 8px; background: #fff }
+
   .reader-toolbar { flex-wrap: nowrap; gap: 6px; padding: 6px 10px; border-radius: 13px 13px 0 0 }
   .reader-navigation { display: flex; flex: 1 1 auto; flex-wrap: nowrap; justify-content: flex-start; gap: 4px; min-width: 0 }
   .reader-toolbar #reader-source { min-width: 44px; padding: 6px 2px; margin: 0 0 0 auto }
@@ -505,10 +600,14 @@ dialog .dialog-actions { gap: 10px }
 
   main, .monitor-mode main { padding-inline: 10px }
   .content-tabs { gap: 3px }
+  .content-tab { font-size: 20px }
+  .workspace-platforms .platform-nav { padding-inline: 7px; font-size: 12px }
+  .workspace-platforms .platform-nav.active::after { left: 7px; right: 7px }
+  #date-toggle { min-width: 92px; padding-inline: 8px; gap: 5px }
   .reader-article #reader-title { font-size: 26px }
 }
 @media (max-height: 600px) {
-  #range-panel { position: fixed; inset: 16px auto auto 50%; width: min(384px, calc(100vw - 32px)); transform: translateX(-50%); max-height: calc(100dvh - 32px) }
+  #date-menu, .filter-toolbar:has(> #workspace-platforms[hidden]) #date-menu { position: fixed; inset: 12px auto auto 50%; width: min(360px, calc(100vw - 24px)); max-width: calc(100vw - 24px); transform: translateX(-50%); max-height: calc(100dvh - 24px) }
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .article, .author-nav, .nav-item { transition: none; animation: none }
