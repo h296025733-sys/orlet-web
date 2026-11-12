@@ -3,21 +3,24 @@
 export function createProgressiveReveal({draw,requestFrame=globalThis.requestAnimationFrame?.bind(globalThis),cancelFrame=globalThis.cancelAnimationFrame?.bind(globalThis),reducedMotion=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches}={}){
   const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null;
   const split=text=>segmenter?[...segmenter.segment(text)].map(x=>x.segment):Array.from(text);
-  let fields=[],frame=null,last=null,credit=0,waiters=[],started=false,warmup=0;
+  let fields=[],frame=null,last=null,credit=0,waiters=[],started=false,finished=false;
   const remaining=()=>fields.reduce((sum,f)=>sum+f.chars.length-f.count,0);
   const snapshot=()=>{const value={brief:'',keyPoints:[],caveats:[]};for(const f of fields){const text=f.chars.slice(0,f.count).join('');if(f.key==='brief')value.brief=text;else if(text)value[f.key].push(text);}return value;};
   const settle=()=>{for(const resolve of waiters.splice(0))resolve();};
   const stop=()=>{if(frame!==null)cancelFrame?.(frame);frame=null;last=null;credit=0;settle();};
   function tick(time){
     frame=null;const pending=remaining(),elapsed=last===null?16:Math.min(32,Math.max(0,time-last));last=time;
-    // A tiny first network fragment otherwise empties before the next response.
-    // Keep this small and bounded; the spinner already acknowledges the click.
-    warmup+=elapsed;
-    if(!started&&pending<18&&warmup<320){frame=requestFrame(tick);return;}
+    // Research may offer a short opening several seconds before the analysis.
+    // Start only once the explanation is flowing, with a small reserve to cover
+    // gaps between network updates. The existing spinner stays visible meanwhile.
+    const explanation=fields.filter(f=>f.key!=='brief').reduce((sum,f)=>sum+f.chars.length,0);
+    if(!started&&!finished&&(explanation<64||pending<120)){last=null;return;}
     started=true;
-    // Adapt gently to backlog without a large catch-up burst after a slow frame.
-    credit=Math.min(3,credit+elapsed*(78+Math.min(62,pending/4))/1000);
-    let budget=Math.min(3,Math.floor(credit)),changed=false;credit-=budget;
+    // Ease down as the reserve shrinks instead of consuming every new batch at
+    // once. Completion drains at the same upper speed, never dumping the tail.
+    const rate=finished?60:Math.min(60,Math.max(14,pending/2));
+    credit=Math.min(2,credit+elapsed*rate/1000);
+    let budget=Math.min(2,Math.floor(credit)),changed=false;credit-=budget;
     for(const f of fields){const count=Math.min(budget,f.chars.length-f.count);if(count){f.count+=count;budget-=count;changed=true;}if(!budget)break;}
     if(changed)draw(snapshot());
     if(remaining())frame=requestFrame(tick);else{last=null;credit=0;settle();}
@@ -34,14 +37,14 @@ export function createProgressiveReveal({draw,requestFrame=globalThis.requestAni
       if(!remaining()){stop();draw(snapshot());return;}
       if(remaining()&&frame===null)frame=requestFrame(tick);
     },
-    drain:()=>remaining()?new Promise(resolve=>waiters.push(resolve)):Promise.resolve(),
-    reset(){stop();fields=[];started=false;warmup=0;}
+    drain(){finished=true;if(!remaining())return Promise.resolve();if(frame===null)frame=requestFrame(tick);return new Promise(resolve=>waiters.push(resolve));},
+    reset(){stop();fields=[];started=false;finished=false;}
   };
 }
 
 export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
   let generation=0,target=null,busy=false,waiting=null,streaming=null,nodes=null,hasPreview=false,animate=false,revealData=null,cursor=null;
-  const reveal=createProgressiveReveal({draw:result=>paint({...revealData,result},false,false)});
+  const reveal=createProgressiveReveal({draw:result=>paint({...revealData,result},false,busy)});
   const pending=new Map();
   const requestStream=streamRequest||((path,options)=>globalThis.orletBackend?.request?globalThis.orletBackend.request('/api'+path,options):fetch('/api'+path,options));
   const pathFor=item=>item.documentId?'/documents/'+encodeURIComponent(item.documentId)+'/analysis':'/articles/'+item.id+'/analysis';
@@ -58,7 +61,7 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
     const result=(partial?data.preview:data.result)||{};
     if(!animate){paint(data,partial);return;}
     if(!result.brief&&!result.keyPoints?.some(Boolean)&&!result.caveats?.some(Boolean))return;
-    hasPreview=true;revealData=data;status('');reveal.update(result);
+    revealData=data;reveal.update(result);
   }
   function paint(data,partial=false,clearStatus=true){
     const result=(partial?data.preview:data.result)||{},brief=typeof result.brief==='string'?result.brief:'',points=Array.isArray(result.keyPoints)?result.keyPoints.filter(x=>typeof x==='string'):[],caveats=Array.isArray(result.caveats)?result.caveats.filter(x=>typeof x==='string'):[];
