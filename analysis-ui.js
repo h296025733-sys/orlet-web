@@ -14,7 +14,7 @@ export function createProgressiveReveal({draw,requestFrame=globalThis.requestAni
     // Start only once the explanation is flowing, with a small reserve to cover
     // gaps between network updates. The existing spinner stays visible meanwhile.
     const explanation=fields.filter(f=>f.key!=='brief').reduce((sum,f)=>sum+f.chars.length,0);
-    if(!started&&!finished&&(explanation<64||pending<120)){last=null;return;}
+    if(!started&&!finished&&(explanation<24||pending<72)){last=null;return;}
     started=true;
     // Ease down as the reserve shrinks instead of consuming every new batch at
     // once. Completion drains at the same upper speed, never dumping the tail.
