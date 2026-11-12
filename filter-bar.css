@@ -169,6 +169,9 @@ main, .monitor-mode main { width: 100%; max-width: 1440px; margin: 0 auto; paddi
 .wechat-card .wx-head .unread-dot { top: auto; bottom: 6px; right: 0 }
 .wechat-card .wx-foot { grid-column: 1 / -1; grid-row: 2; margin: 0; padding-top: 10px }
 
+.article-action-icon { display: none }
+.article-read-check { fill: none; stroke: var(--read-check-ink, currentColor) }
+
 /* Shared control language: stable shapes and explicit semantic states. */
 .primary { color: #fff; background: var(--accent); border-color: var(--accent); border-radius: 999px; font-size: 13px; font-weight: 500; box-shadow: none }
 .primary:hover, .page-title #add-open:hover { background: #2d506c; border-color: #2d506c }
@@ -373,7 +376,7 @@ dialog .dialog-actions { gap: 10px }
   .article-links button, .article-links a, .wx-actions button, .xhs-actions button, .article-actions button, .article-actions a { min-height: 44px; min-width: 44px; font-size: 14px }
   .wx-foot button, .wx-foot a { width: auto; padding: 6px 9px; white-space: nowrap }
   .article-links .analysis-open { min-height: 44px }
-  .article.wechat-card { grid-template-columns: minmax(0, 1fr) 78px; gap: 8px 10px; padding-block: 12px 10px }
+  .article.wechat-card { grid-template-columns: minmax(0, 1fr) 110px; gap: 8px 10px; padding-block: 12px 10px }
   .wechat-card .wx-title { grid-column: 1 / -1; grid-row: 1 }
   .wechat-card .wx-head { grid-column: 2; grid-row: 2; align-self: center }
   .wechat-card .wx-head { grid-template-columns: 20px minmax(0, 1fr); gap: 4px 6px }
@@ -385,6 +388,15 @@ dialog .dialog-actions { gap: 10px }
   .wechat-card .wx-foot .wx-actions { gap: 6px }
   .wechat-card .wx-foot button { font-size: 13px; padding-inline: 6px }
   .wechat-card .wx-foot .analysis-open, .wechat-card .wx-foot button[data-star] { padding-inline: 10px }
+  /* Small glyphs, generous invisible touch targets; desktop keeps its text controls. */
+  .article :is(.wx-foot,.xhs-foot,.article-actions) button:is([data-analysis],[data-star],[data-read]) { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #647787; text-decoration: none; box-shadow: none }
+  .article .article-action-label { display: none }
+  .article .article-action-icon { display: block; width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none }
+  .article :is(.wx-foot,.xhs-foot,.article-actions) button:is([data-star],[data-read])[aria-pressed="true"] { color: var(--accent); background: transparent }
+  .article :is(.wx-foot,.xhs-foot,.article-actions) button[aria-pressed="true"] .article-action-icon { fill: currentColor }
+  .article :is(.wx-foot,.xhs-foot,.article-actions) button[data-read][aria-pressed="true"] { --read-check-ink: #fff }
+  .article :is(.wx-foot,.xhs-foot,.article-actions) button:is([data-analysis],[data-star],[data-read]):active { background: var(--accent-soft) }
+  .article :is(.wx-foot,.xhs-foot,.article-actions) button:is([data-analysis],[data-star],[data-read]):disabled { opacity: .45 }
   .article.xhs-card .xhs-title { font-size: 18px }
   .library-toolbar { gap: 8px; padding: 0 }
   .library-kinds { flex: 1 1 100%; gap: 3px }
