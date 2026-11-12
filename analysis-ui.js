@@ -1,9 +1,51 @@
+// Render received text at a steady frame cadence, independently of network
+// chunk boundaries. Cached results bypass this queue entirely.
+export function createProgressiveReveal({draw,requestFrame=globalThis.requestAnimationFrame?.bind(globalThis),cancelFrame=globalThis.cancelAnimationFrame?.bind(globalThis),reducedMotion=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches}={}){
+  const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null;
+  const split=text=>segmenter?[...segmenter.segment(text)].map(x=>x.segment):Array.from(text);
+  let fields=[],frame=null,last=null,credit=0,waiters=[],started=false,warmup=0;
+  const remaining=()=>fields.reduce((sum,f)=>sum+f.chars.length-f.count,0);
+  const snapshot=()=>{const value={brief:'',keyPoints:[],caveats:[]};for(const f of fields){const text=f.chars.slice(0,f.count).join('');if(f.key==='brief')value.brief=text;else if(text)value[f.key].push(text);}return value;};
+  const settle=()=>{for(const resolve of waiters.splice(0))resolve();};
+  const stop=()=>{if(frame!==null)cancelFrame?.(frame);frame=null;last=null;credit=0;settle();};
+  function tick(time){
+    frame=null;const pending=remaining(),elapsed=last===null?16:Math.min(32,Math.max(0,time-last));last=time;
+    // A tiny first network fragment otherwise empties before the next response.
+    // Keep this small and bounded; the spinner already acknowledges the click.
+    warmup+=elapsed;
+    if(!started&&pending<18&&warmup<320){frame=requestFrame(tick);return;}
+    started=true;
+    // Adapt gently to backlog without a large catch-up burst after a slow frame.
+    credit=Math.min(3,credit+elapsed*(78+Math.min(62,pending/4))/1000);
+    let budget=Math.min(3,Math.floor(credit)),changed=false;credit-=budget;
+    for(const f of fields){const count=Math.min(budget,f.chars.length-f.count);if(count){f.count+=count;budget-=count;changed=true;}if(!budget)break;}
+    if(changed)draw(snapshot());
+    if(remaining())frame=requestFrame(tick);else{last=null;credit=0;settle();}
+  }
+  return{
+    update(value){
+      const previous=new Map(fields.map(f=>[f.key+':'+f.index,f]));
+      fields=[{key:'brief',index:0,text:typeof value.brief==='string'?value.brief:''},...['keyPoints','caveats'].flatMap(key=>(Array.isArray(value[key])?value[key]:[]).filter(x=>typeof x==='string').map((text,index)=>({key,index,text})))].map(({text,...f})=>{
+        const chars=split(text),old=previous.get(f.key+':'+f.index);let count=0;
+        while(old&&count<old.count&&count<chars.length&&old.chars[count]===chars[count])count++;
+        return{...f,chars,count};
+      });
+      if(!requestFrame||reducedMotion()){stop();for(const f of fields)f.count=f.chars.length;draw(snapshot());return;}
+      if(!remaining()){stop();draw(snapshot());return;}
+      if(remaining()&&frame===null)frame=requestFrame(tick);
+    },
+    drain:()=>remaining()?new Promise(resolve=>waiters.push(resolve)):Promise.resolve(),
+    reset(){stop();fields=[];started=false;warmup=0;}
+  };
+}
+
 export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
-  let generation=0,target=null,busy=false,waiting=null,streaming=null,nodes=null,hasPreview=false;
+  let generation=0,target=null,busy=false,waiting=null,streaming=null,nodes=null,hasPreview=false,animate=false,revealData=null,cursor=null;
+  const reveal=createProgressiveReveal({draw:result=>paint({...revealData,result},false,false)});
   const pending=new Map();
   const requestStream=streamRequest||((path,options)=>globalThis.orletBackend?.request?globalThis.orletBackend.request('/api'+path,options):fetch('/api'+path,options));
   const pathFor=item=>item.documentId?'/documents/'+encodeURIComponent(item.documentId)+'/analysis':'/articles/'+item.id+'/analysis';
-  function invalidate(){generation++;if(waiting){clearTimeout(waiting.timer);waiting.resolve(false);waiting=null;}if(streaming){streaming.controller.abort();void streaming.reader?.cancel().catch(()=>{});streaming=null;}return generation;}
+  function invalidate(){generation++;animate=false;reveal.reset();cursor?.classList?.remove('analysis-cursor');cursor=null;if(waiting){clearTimeout(waiting.timer);waiting.resolve(false);waiting=null;}if(streaming){streaming.controller.abort();void streaming.reader?.cancel().catch(()=>{});streaming=null;}return generation;}
   function close(){invalidate();target=null;busy=false;$('#analysis-dialog').close();}
   function pause(token){return new Promise(resolve=>{const timer=setTimeout(()=>{waiting=null;resolve(token===generation);},2500);waiting={timer,resolve};});}
   function post(base,versionId){
@@ -11,10 +53,17 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
     if(!job){job=api(base+'?background=1',{method:'POST',body:JSON.stringify(versionId?{versionId}:{}),...(globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{})});pending.set(key,job);job.finally(()=>{if(pending.get(key)===job)pending.delete(key);}).catch(()=>{});}
     return job;
   }
-  function status(message,retry=false){$('#analysis-status').textContent=message;$('#analysis-status').hidden=!message;$('#analysis-retry').hidden=!retry;}
+  function status(message,retry=false){const node=$('#analysis-status');node.textContent=message;node.hidden=!message;node.classList?.toggle('analysis-pending',!retry&&/^正在/.test(message));$('#analysis-retry').hidden=!retry;}
   function render(data,partial=false){
+    const result=(partial?data.preview:data.result)||{};
+    if(!animate){paint(data,partial);return;}
+    if(!result.brief&&!result.keyPoints?.some(Boolean)&&!result.caveats?.some(Boolean))return;
+    hasPreview=true;revealData=data;status('');reveal.update(result);
+  }
+  function paint(data,partial=false,clearStatus=true){
     const result=(partial?data.preview:data.result)||{},brief=typeof result.brief==='string'?result.brief:'',points=Array.isArray(result.keyPoints)?result.keyPoints.filter(x=>typeof x==='string'):[],caveats=Array.isArray(result.caveats)?result.caveats.filter(x=>typeof x==='string'):[];
     if(partial&&!brief&&!points.some(Boolean)&&!caveats.some(Boolean))return;
+    const panel=$('#analysis-dialog'),follow=animate&&panel.scrollHeight-panel.scrollTop-panel.clientHeight<48;
     const container=$('#analysis-result'),doc=container.ownerDocument;
     if(doc?.createElement){
       if(!nodes){
@@ -24,12 +73,15 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
       const setText=(node,text)=>{const old=node.textContent;if(old===text)return;if(node.childNodes.length===1&&node.firstChild.nodeType===3&&text.startsWith(old))node.firstChild.appendData(text.slice(old.length));else node.textContent=text;};
       const list=(node,heading,items)=>{heading.hidden=node.hidden=!items.length;for(let i=0;i<items.length;i++){let child=node.children[i];if(!child){child=doc.createElement('li');node.appendChild(child);}setText(child,items[i]);}while(node.children.length>items.length)node.removeChild(node.lastChild);};
       setText(nodes.brief,brief);nodes.brief.hidden=!brief;list(nodes.points,nodes.pointsHeading,points);list(nodes.caveats,nodes.caveatsHeading,caveats);
+      const next=animate?(nodes.caveats.lastChild||nodes.points.lastChild||(!nodes.brief.hidden?nodes.brief:null)):null;
+      if(next!==cursor){cursor?.classList?.remove('analysis-cursor');cursor=next;cursor?.classList?.add('analysis-cursor');}
     }else container.innerHTML=`<p class="analysis-brief">${esc(brief)}</p>${points.length?`<h3>重点</h3><ul>${points.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}${caveats.length?`<h3>留意</h3><ul>${caveats.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}`;
     hasPreview=!!brief||points.some(Boolean)||caveats.some(Boolean);
     const coverage=data.coverage||{},labels=[];
     if(coverage.textTruncated)labels.push('已截取部分正文');else if(coverage.textComplete===false)labels.push('正文尚未完整');
     $('#analysis-coverage').textContent=labels.join(' · ');$('#analysis-coverage').hidden=!labels.length;
-    status('');
+    if(clearStatus)status('');
+    if(follow)panel.scrollTop=panel.scrollHeight;
   }
   async function receiveStream(path,initial,token,deadline){
     const session={controller:new AbortController(),reader:null};streaming=session;
@@ -81,9 +133,10 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
       if(token!==generation)return;if(data.status==='ready'&&data.result){render(data);return;}
       const config=await read('/ai/status');if(token!==generation)return;
       if(!config.configured){status('请先在主机连接 DeepSeek');return;}
+      animate=true;
       while(token===generation){
         if(data.status==='preparing'&&data.phase==='analysis')data={...data,status:'running'};
-        if(data.status==='ready'&&data.result){render(data);return;}
+        if(data.status==='ready'&&data.result){render(data);await reveal.drain();return;}
         if(data.preview)render(data,true);
         if(data.status==='body_unavailable'){
           if(prepareAgain&&!prepared){prepared=true;data=await post(base);continue;}
@@ -124,10 +177,10 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
         polls++;try{data=await read(base+pollQuery);}catch(error){if(error.status&&error.status<500)throw error;status('正在重新连接…');}
       }
     }catch(error){if(token===generation)status(error.status===409?'暂时无法取得正文，请稍后重试':error.status===503?'请先在主机连接 DeepSeek':['TimeoutError','AbortError'].includes(error.name)?'请求用时较长，请稍后重试':error.message||'分析暂不可用',error.status!==503);}
-    finally{if(token===generation)busy=false;}
+    finally{if(token===generation){busy=false;animate=false;cursor?.classList?.remove('analysis-cursor');cursor=null;}}
   }
   async function open(item){
-    if(!enabled()||!item)return;target={...item};const token=invalidate();nodes=null;hasPreview=false;$('#analysis-title').textContent=item.title||'文章分析';$('#analysis-result').innerHTML='';$('#analysis-coverage').hidden=true;$('#analysis-dialog').showModal();await run(target,token);
+    if(!enabled()||!item)return;target={...item};const token=invalidate();nodes=null;hasPreview=false;$('#analysis-title').textContent=item.title||'文章分析';$('#analysis-result').innerHTML='';$('#analysis-coverage').hidden=true;$('#analysis-dialog').showModal();$('#analysis-dialog').scrollTop=0;await run(target,token);
   }
   $('#analysis-close').addEventListener('click',close);$('#analysis-dialog').addEventListener('cancel',event=>{event.preventDefault();close();});
   $('#analysis-retry').addEventListener('click',()=>{if(target&&!busy)void run(target,invalidate(),true);});

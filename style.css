@@ -1683,3 +1683,13 @@ main {
 }
 
 }
+
+/* Keep the reading surface still while analysis grows, with immediate feedback. */
+.analysis-dialog{height:min(680px,82dvh)}
+#analysis-status.analysis-pending:not([hidden]){display:flex;align-items:center;gap:9px;color:#647785;font-size:14px;min-height:24px}
+#analysis-status.analysis-pending::before{content:"";width:13px;height:13px;flex:0 0 13px;border:2px solid #dbe5ea;border-top-color:#315f7d;border-radius:50%;animation:analysis-spin .8s linear infinite}
+.analysis-result .analysis-cursor::after{content:"";display:inline-block;width:2px;height:.95em;background:#315f7d;vertical-align:-.08em;margin-left:3px;animation:analysis-caret 1s ease-in-out infinite}
+@keyframes analysis-spin{to{transform:rotate(360deg)}}
+@keyframes analysis-caret{0%,100%{opacity:1}50%{opacity:.25}}
+@media(max-width:700px){.analysis-dialog{height:min(760px,calc(var(--visual-height,100dvh)*.84))}}
+@media(prefers-reduced-motion:reduce){#analysis-status.analysis-pending::before,.analysis-result .analysis-cursor::after{animation:none}}
