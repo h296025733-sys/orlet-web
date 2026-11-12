@@ -436,6 +436,8 @@ dialog .dialog-actions { gap: 10px }
   .reader-navigation .reader-pagination { display: none }
   .reader-article { width: calc(100% - 32px); padding: 24px 0 36px }
   .reader-article #reader-title { font-size: 28px; line-height: 1.45; letter-spacing: -.015em; margin-bottom: 22px }
+  /* WebKit's pretty wrapping shortens each line; fill the mobile reading column. */
+  .reader-article #reader-title, #reader-content p { text-wrap: wrap }
   dialog { padding: 24px 20px; border-radius: 10px }
   dialog .dialog-title h2 { font-size: 21px }
   dialog input, dialog select, dialog textarea { font-size: 16px }
