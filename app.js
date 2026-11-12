@@ -1100,4 +1100,7 @@ $('#source-delete-dialog').addEventListener('close',()=>{state.deleteSource=null
 document.addEventListener?.('keydown',event=>{if(document.querySelector('dialog[open]')?.open)return;if(event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;if(event.key==='Escape'){if(!$('#nav-backdrop').hidden)toggleMobileNav(false);else if(state.readerId!==null)void closeReader();}else if(event.key==='/'&&state.readerId===null&&state.view!=='activity'){event.preventDefault();$('#search').focus();}else if(state.readerId!==null&&['ArrowLeft','ArrowRight'].includes(event.key)){event.preventDefault();readerStep(event.key==='ArrowLeft'?-1:1);}});
 installImageHandlers($('#articles'));installImageHandlers($('#reader-content'));
 mobileNavigation?.addEventListener?.('change',()=>toggleMobileNav(false));toggleMobileNav(false);
-updateNavigation();await Promise.all([refreshArticles().catch(error=>toast(error.message)),refresh({skipFeedMetadata:true})]);void pollUpdates();setInterval(pollUpdates,5000);setInterval(refresh,15000);
+updateNavigation();await Promise.all([refreshArticles().catch(error=>toast(error.message)),refresh({skipFeedMetadata:true})]);
+const linkedArticle=new URLSearchParams(globalThis.location?.search||'').get('article');
+if(/^[1-9]\d{0,9}$/.test(linkedArticle||''))await openReader(Number(linkedArticle));
+void pollUpdates();setInterval(pollUpdates,5000);setInterval(refresh,15000);

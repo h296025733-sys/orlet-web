@@ -145,25 +145,36 @@ export function createSpeechPlayer({synth, Utterance, onChange = () => {}, sched
   return {update, toggle, stop, setRate, setVoice, seek, skip, snapshot};
 }
 
-export function createArticleAudioPlayer({AudioCtor, request, assetUrl = path => path, voices, onChange = () => {}, schedule = setTimeout, unschedule = clearTimeout}) {
-  const audio = new AudioCtor(); audio.preload = 'metadata'; audio.crossOrigin = 'anonymous';
+export function createArticleAudioPlayer({AudioCtor, request, assetUrl = path => path, prepareAudio = null, voices, onChange = () => {}, schedule = setTimeout, unschedule = clearTimeout}) {
+  const audio = new AudioCtor(); audio.preload = 'auto'; audio.crossOrigin = 'anonymous';
   let key = null, text = '', job = null, parts = [], index = 0, rate = 1, voiceId = voices[0].id;
   let phase = 'idle', error = '', generation = 0, shouldPlay = false, timer = null, controller = null, pendingTime = 0, source = '', deadline = 0;
+  let originalParts = [];
+  const prepared = new Map(), preparing = new Set(); let waitingTimer = null;
   const length = () => parts.reduce((sum, part) => sum + part.duration, 0);
   const position = () => phase === 'ended' ? length() : Math.min(length(), parts.slice(0, index).reduce((sum, part) => sum + part.duration, 0) + (source ? Number(audio.currentTime) || pendingTime : 0));
   const snapshot = () => ({kind: 'audio', supported: true, ready: !!text, phase, error, rate, voiceId, position: position(), length: length(), progress: length() ? position() / length() : 0, complete: !!job?.complete});
   const emit = () => onChange(snapshot());
-  function reset() { generation++; unschedule(timer); timer = null; controller?.abort(); controller = null; shouldPlay = false; audio.pause(); audio.removeAttribute('src'); audio.load(); source = ''; pendingTime = 0; }
+  function reset() { generation++; unschedule(timer); unschedule(waitingTimer); timer = waitingTimer = null; controller?.abort(); controller = null; shouldPlay = false; audio.pause(); audio.removeAttribute('src'); audio.load(); source = ''; pendingTime = 0; for (const item of prepared.values()) item.dispose?.(); prepared.clear(); preparing.clear(); }
+  function warm() {
+    if (!prepareAudio || !controller || controller.signal.aborted) return;
+    for (const [url, item] of prepared) { const at = parts.findIndex(part => part.url === url); if (at < index - 1 || at > index + 3) { item.dispose?.(); prepared.delete(url); } }
+    for (let next = index + 1; next < Math.min(parts.length, index + 4) && preparing.size < 3; next++) {
+      const url = parts[next].url; if (prepared.has(url) || preparing.has(url)) continue;
+      const token = generation; preparing.add(url);
+      void prepareAudio(url, {signal: controller.signal}).then(item => { if (token !== generation || next < index - 1 || next > index + 3) item.dispose?.(); else prepared.set(url, item); }).catch(() => {}).finally(() => { if (token === generation) preparing.delete(url); });
+    }
+  }
   function stop() { reset(); job = null; parts = []; index = 0; phase = 'idle'; error = ''; emit(); }
   function fail(message) { shouldPlay = false; audio.pause(); phase = 'error'; error = message; emit(); }
   function play() {
-    const token = generation; phase = 'starting'; error = ''; emit();
-    try { const result = audio.play(); result?.catch?.(problem => { if (token !== generation || !shouldPlay) return; shouldPlay = false; phase = problem.name === 'NotAllowedError' ? 'paused' : 'error'; error = problem.name === 'NotAllowedError' ? '音频已就绪，点按播放' : '音频暂时无法播放，请重试'; emit(); }); }
+    const token = generation, playingSource = source; if (phase !== 'playing') phase = 'starting'; error = ''; emit();
+    try { const result = audio.play(); result?.catch?.(problem => { if (token !== generation || source !== playingSource || !shouldPlay) return; shouldPlay = false; phase = problem.name === 'NotAllowedError' ? 'paused' : 'error'; error = problem.name === 'NotAllowedError' ? '音频已就绪，点按播放' : '音频暂时无法播放，请重试'; emit(); }); }
     catch { fail('音频暂时无法播放，请重试'); }
   }
   function loadPart(next, time = 0) {
     if (!parts[next]) { phase = job?.complete ? 'ended' : shouldPlay ? 'buffering' : 'paused'; emit(); return; }
-    audio.pause(); index = next; pendingTime = time; source = assetUrl(parts[index].url); audio.src = source; audio.playbackRate = rate; audio.load();
+    unschedule(waitingTimer); waitingTimer = null; audio.pause(); index = next; pendingTime = time; source = prepared.get(parts[index].url)?.url || assetUrl(parts[index].url); audio.src = source; audio.playbackRate = rate; audio.load(); warm();
     if (shouldPlay) play(); else { phase = 'paused'; emit(); }
   }
   audio.addEventListener('loadedmetadata', () => {
@@ -172,9 +183,9 @@ export function createArticleAudioPlayer({AudioCtor, request, assetUrl = path =>
     if (pendingTime) { try { audio.currentTime = Math.min(pendingTime, parts[index].duration); pendingTime = 0; } catch {} }
     emit();
   });
-  audio.addEventListener('playing', () => { if (!source || !shouldPlay) { audio.pause(); return; } phase = 'playing'; error = ''; emit(); });
+  audio.addEventListener('playing', () => { unschedule(waitingTimer); waitingTimer = null; if (!source || !shouldPlay) { audio.pause(); return; } phase = 'playing'; error = ''; emit(); });
   audio.addEventListener('timeupdate', () => { if (source) emit(); });
-  audio.addEventListener('waiting', () => { if (source && shouldPlay) { phase = 'buffering'; emit(); } });
+  audio.addEventListener('waiting', () => { unschedule(waitingTimer); if (source && shouldPlay) waitingTimer = schedule(() => { waitingTimer = null; if (source && shouldPlay && audio.readyState < 3) { phase = 'buffering'; emit(); } }, 200); });
   audio.addEventListener('ended', () => {
     if (!source || !shouldPlay || !audio.ended) return;
     if (index + 1 < parts.length) loadPart(index + 1);
@@ -182,10 +193,13 @@ export function createArticleAudioPlayer({AudioCtor, request, assetUrl = path =>
     else if (job?.status === 'error') fail('后续音频暂时无法生成，请稍后重试');
     else { index = parts.length; source = ''; phase = 'buffering'; emit(); }
   });
-  audio.addEventListener('error', () => { if (source && audio.error) fail('音频暂时无法播放，请重试'); });
+  audio.addEventListener('error', () => { if (source && audio.error) { if (parts.length === 1 && parts[0].url.endsWith('/full.mp3') && originalParts.length) { const at = Number(audio.currentTime) || pendingTime || 0; source = ''; parts = originalParts; originalParts = []; index = 0; seek(at / (length() || 1)); } else fail('音频暂时无法播放，请重试'); } });
   function accept(data) {
     if (!data || !/^[a-f0-9]{64}$/.test(data.id) || !Array.isArray(data.segments) || data.segments.length > 1000 || data.segments.some(part => !Number.isFinite(part.duration) || part.duration <= 0 || !new RegExp('^/api/speech/audio/' + data.id + '/\\d{1,4}\\.mp3$').test(part.url))) throw Error('Invalid audio job');
-    job = data; parts = data.segments.map((part, i) => ({...part, duration: parts[i]?.url === part.url ? parts[i].duration : part.duration}));
+    const whole = data.complete && (!job || parts.length === 1 && parts[0].url.endsWith('/full.mp3'));
+    job = data; if (whole) originalParts = data.segments.map(part => ({...part}));
+    const incoming = whole ? [{url: '/api/speech/audio/' + data.id + '/full.mp3', duration: data.segments.reduce((n, part) => n + part.duration, 0)}] : data.segments;
+    parts = incoming.map((part, i) => ({...part, duration: parts[i]?.url === part.url ? parts[i].duration : part.duration})); warm();
     if (data.status === 'error' && !parts.length) { fail('本机语音暂时无法生成，请稍后重试'); return; }
     if (parts[index] && !source) loadPart(index);
     else if (data.complete && index >= parts.length && parts.length) { index = parts.length - 1; shouldPlay = false; phase = 'ended'; }
@@ -248,6 +262,7 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   const toggle = panel.querySelector('.speech-toggle'), range = panel.querySelector('.speech-position');
   const message = panel.querySelector('.speech-panel-message'), positionLabel = panel.querySelector('.speech-position-value');
   const voiceSelect = panel.querySelector('.speech-voice'), rateSelect = panel.querySelector('.speech-rate');
+  panel.querySelector('.speech-voice-field').remove();
   let heading = '', currentKey = null, currentText = '', checkingService = true, panelPoint = null, dockPoint = null, dockSide = 'right', panelMoved = false, scrubbing = false, suppressDockClick = false;
   const clock = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, '0')}`;
   function bounds() {
@@ -303,7 +318,6 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
     range.setAttribute('aria-label', isAudio ? '音频播放进度' : '正文位置，按文字跳读');
     range.setAttribute('aria-valuetext', `${positionLabel.textContent}，${isAudio ? '真实音频时间' : '按正文文字位置'}`);
     panel.querySelector('.speech-position-heading label').textContent = isAudio ? state.complete ? '播放进度' : '已就绪音频' : '正文位置';
-    panel.querySelector('.speech-voice-field > span').textContent = isAudio ? '本机声音' : '设备声音';
     message.textContent = state.error || (state.phase === 'preparing' ? '正在准备音频…' : state.phase === 'buffering' ? '正在准备后续音频…' : ''); message.hidden = !message.textContent;
     const unsupported = row.querySelector('.reader-listen-message'); unsupported.textContent = !state.supported ? '当前浏览器不支持朗读' : ''; unsupported.hidden = !unsupported.textContent;
     panel.querySelector('.speech-previous').disabled = !state.ready || state.position === 0;
@@ -377,7 +391,7 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   };
   void speechRequest('/status', {signal: host.AbortSignal?.timeout?.(3500)}).then(status => {
     if (!status.available || !Array.isArray(status.voices) || !status.voices.length || typeof host.Audio !== 'function') return;
-    const voices = status.voices.filter(voice => /^[a-z0-9-]{1,40}$/.test(voice.id) && typeof voice.name === 'string'); if (!voices.length) return;
+    const voices = status.voices.filter(voice => voice.id === 'melo-zh' && typeof voice.name === 'string'); if (!voices.length) return;
     const previousRate = player.snapshot().rate; player.stop();
     player = createArticleAudioPlayer({AudioCtor: host.Audio, request: speechRequest, assetUrl: path => host.orletBackend?.url(path) || path, voices, onChange: render});
     voiceSelect.replaceChildren(); for (const voice of voices) { const option = doc.createElement('option'); option.value = voice.id; option.textContent = voice.name; voiceSelect.append(option); }
