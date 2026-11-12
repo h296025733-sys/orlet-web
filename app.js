@@ -641,7 +641,7 @@ function documentWaiting(document){
     block.type==='image'&&!block.unavailable&&(block.assetId||block.url||block.localUrl)&&active(block.mediaStatus)||
     block.type==='video'&&(block.posterAssetId||block.poster||block.posterLocalUrl)&&active(block.posterMediaStatus));
 }
-function stopReader(){libraryUi.cancel();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
+function stopReader(){globalThis.orletReaderSpeech?.stop();libraryUi.cancel();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
 function renderReader(error=''){
   const article=state.reader;
   $('#reader-title').textContent=articleTitle(article);
@@ -674,6 +674,7 @@ function renderReader(error=''){
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
   const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent='原文 ↗';
   const index=state.articles.findIndex(item=>item.id===state.readerId);$('#reader-prev').disabled=index<=0;$('#reader-next').disabled=index<0||index>=state.articles.length-1;
+  globalThis.orletReaderSpeech?.update({key:state.readerId,title:articleTitle(article)});
 }
 function applyReader(article,generation){
   if(!readerCurrent(generation)||Number(article?.id)!==state.readerId)return false;
