@@ -170,6 +170,7 @@ main, .monitor-mode main { width: 100%; max-width: 1440px; margin: 0 auto; paddi
 .wechat-card .wx-foot { grid-column: 1 / -1; grid-row: 2; margin: 0; padding-top: 10px }
 
 .article-action-icon { display: none }
+.reader-label-mobile { display: none }
 .article-read-check { fill: none; stroke: var(--read-check-ink, currentColor) }
 
 /* Shared control language: stable shapes and explicit semantic states. */
@@ -417,13 +418,22 @@ dialog .dialog-actions { gap: 10px }
   .monitor-detail { padding: 18px; min-height: 250px }
   .monitor-detail .source-name { font-size: 22px }
   .monitor-list-heading select, .source-actions button { min-height: 44px; font-size: 13px }
-  .reader-toolbar { gap: 6px; padding: 8px 10px; border-radius: 13px 13px 0 0 }
-  .reader-navigation { display: flex; flex-wrap: wrap; justify-content: space-between; flex-basis: 100%; gap: 4px }
-  .reader-toolbar #reader-source { padding: 6px 4px; margin: 0 0 0 auto }
-  .reader-toolbar #reader-back { justify-self: start; padding: 6px 4px; min-width: 0 }
-  .reader-actions { flex: 1 0 100%; justify-content: flex-end; gap: 8px; padding: 6px 0 0; border-left: 0; border-top: 1px solid var(--line) }
-  .reader-actions .text-button { min-width: 44px; padding: 6px 10px }
-  .reader-navigation .reader-pagination { margin: 0; padding: 0; justify-content: center }
+  .reader-toolbar { flex-wrap: nowrap; gap: 6px; padding: 6px 10px; border-radius: 13px 13px 0 0 }
+  .reader-navigation { display: flex; flex: 1 1 auto; flex-wrap: nowrap; justify-content: flex-start; gap: 4px; min-width: 0 }
+  .reader-toolbar #reader-source { min-width: 44px; padding: 6px 2px; margin: 0 0 0 auto }
+  .reader-toolbar #reader-back { padding: 6px 2px; min-width: 44px }
+  .reader-label-desktop { display: none }
+  .reader-label-mobile { display: inline }
+  .reader-actions { flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; gap: 2px; padding: 0; border: 0 }
+  .reader-toolbar .reader-actions :is(#reader-star,#reader-analysis,#reader-read) { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #647787; text-decoration: none; box-shadow: none }
+  .reader-actions .article-action-label { display: none }
+  .reader-actions .article-action-icon { display: block; width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none }
+  .reader-toolbar .reader-actions :is(#reader-star,#reader-read)[aria-pressed="true"] { color: var(--accent); background: transparent }
+  .reader-actions [aria-pressed="true"] .article-action-icon { fill: currentColor }
+  .reader-actions #reader-read[aria-pressed="true"] { --read-check-ink: #fff }
+  .reader-toolbar .reader-actions :is(#reader-star,#reader-analysis,#reader-read):active { background: var(--accent-soft) }
+  .reader-toolbar .reader-actions :is(#reader-star,#reader-analysis,#reader-read):disabled { opacity: .45 }
+  .reader-navigation .reader-pagination { display: none }
   .reader-article { width: calc(100% - 32px); padding: 24px 0 36px }
   .reader-article #reader-title { font-size: 28px; line-height: 1.45; letter-spacing: -.015em; margin-bottom: 22px }
   dialog { padding: 24px 20px; border-radius: 10px }

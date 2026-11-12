@@ -669,9 +669,8 @@ function renderReader(error=''){
     $('#reader-retry-wrap').hidden=metadata||!failed||article?.access?.allowed===false;
   }
   $('#reader-analysis').hidden=!aiAnalysisEnabled();$('#reader-analysis').disabled=!article;
-  $('#reader-star').textContent=article?.starred?'★ 已收藏':'☆ 收藏';
-  $('#reader-star').setAttribute('aria-pressed',String(!!article?.starred));
-  $('#reader-read').textContent=article?.is_read?'标为未读':'标为已读';
+  syncArticleToggle($('#reader-star'),'star',!!article?.starred);
+  syncArticleToggle($('#reader-read'),'read',!!article?.is_read);
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
   const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent='原文 ↗';
   const index=state.articles.findIndex(item=>item.id===state.readerId);$('#reader-prev').disabled=index<=0;$('#reader-next').disabled=index<0||index>=state.articles.length-1;
