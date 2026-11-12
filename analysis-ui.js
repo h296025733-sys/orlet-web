@@ -1,8 +1,9 @@
-export function createAnalysisUi({api,$,esc,enabled}){
-  let generation=0,target=null,busy=false,waiting=null;
+export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
+  let generation=0,target=null,busy=false,waiting=null,streaming=null,nodes=null,hasPreview=false;
   const pending=new Map();
+  const requestStream=streamRequest||((path,options)=>globalThis.orletBackend?.request?globalThis.orletBackend.request('/api'+path,options):fetch('/api'+path,options));
   const pathFor=item=>item.documentId?'/documents/'+encodeURIComponent(item.documentId)+'/analysis':'/articles/'+item.id+'/analysis';
-  function invalidate(){generation++;if(waiting){clearTimeout(waiting.timer);waiting.resolve(false);waiting=null;}return generation;}
+  function invalidate(){generation++;if(waiting){clearTimeout(waiting.timer);waiting.resolve(false);waiting=null;}if(streaming){streaming.controller.abort();void streaming.reader?.cancel().catch(()=>{});streaming=null;}return generation;}
   function close(){invalidate();target=null;busy=false;$('#analysis-dialog').close();}
   function pause(token){return new Promise(resolve=>{const timer=setTimeout(()=>{waiting=null;resolve(token===generation);},2500);waiting={timer,resolve};});}
   function post(base,versionId){
@@ -11,41 +12,82 @@ export function createAnalysisUi({api,$,esc,enabled}){
     return job;
   }
   function status(message,retry=false){$('#analysis-status').textContent=message;$('#analysis-status').hidden=!message;$('#analysis-retry').hidden=!retry;}
-  function render(data){
-    const result=data.result||{},points=Array.isArray(result.keyPoints)?result.keyPoints:[],caveats=Array.isArray(result.caveats)?result.caveats:[];
-    $('#analysis-result').innerHTML=`<p class="analysis-brief">${esc(result.brief||'')}</p>${points.length?`<h3>重点</h3><ul>${points.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}${caveats.length?`<h3>留意</h3><ul>${caveats.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}`;
+  function render(data,partial=false){
+    const result=(partial?data.preview:data.result)||{},brief=typeof result.brief==='string'?result.brief:'',points=Array.isArray(result.keyPoints)?result.keyPoints.filter(x=>typeof x==='string'):[],caveats=Array.isArray(result.caveats)?result.caveats.filter(x=>typeof x==='string'):[];
+    if(partial&&!brief&&!points.some(Boolean)&&!caveats.some(Boolean))return;
+    const container=$('#analysis-result'),doc=container.ownerDocument;
+    if(doc?.createElement){
+      if(!nodes){
+        const make=(tag,text)=>{const node=doc.createElement(tag);if(text)node.textContent=text;container.appendChild(node);return node;};
+        nodes={brief:make('p'),pointsHeading:make('h3','重点'),points:make('ul'),caveatsHeading:make('h3','留意'),caveats:make('ul')};nodes.brief.className='analysis-brief';
+      }
+      const setText=(node,text)=>{const old=node.textContent;if(old===text)return;if(node.childNodes.length===1&&node.firstChild.nodeType===3&&text.startsWith(old))node.firstChild.appendData(text.slice(old.length));else node.textContent=text;};
+      const list=(node,heading,items)=>{heading.hidden=node.hidden=!items.length;for(let i=0;i<items.length;i++){let child=node.children[i];if(!child){child=doc.createElement('li');node.appendChild(child);}setText(child,items[i]);}while(node.children.length>items.length)node.removeChild(node.lastChild);};
+      setText(nodes.brief,brief);nodes.brief.hidden=!brief;list(nodes.points,nodes.pointsHeading,points);list(nodes.caveats,nodes.caveatsHeading,caveats);
+    }else container.innerHTML=`<p class="analysis-brief">${esc(brief)}</p>${points.length?`<h3>重点</h3><ul>${points.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}${caveats.length?`<h3>留意</h3><ul>${caveats.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}`;
+    hasPreview=!!brief||points.some(Boolean)||caveats.some(Boolean);
     const coverage=data.coverage||{},labels=[];
-    if(coverage.scope==='text_only'&&coverage.totalImages)labels.push('仅分析文字');
-    if(coverage.scope==='text_and_images')labels.push(`含 ${Number(coverage.imageCount)||0} 张配图`);
-    if(coverage.textTruncated)labels.push('已截取部分正文');else if(coverage.bodyComplete===false)labels.push('正文尚未完整');
-    if(coverage.skippedImages&&coverage.scope!=='text_only')labels.push('部分图片未分析');
-    if(coverage.videoCount)labels.push('未分析视频内容');
+    if(coverage.textTruncated)labels.push('已截取部分正文');else if(coverage.textComplete===false)labels.push('正文尚未完整');
     $('#analysis-coverage').textContent=labels.join(' · ');$('#analysis-coverage').hidden=!labels.length;
     status('');
+  }
+  async function receiveStream(path,initial,token,deadline){
+    const session={controller:new AbortController(),reader:null};streaming=session;
+    const timer=setTimeout(()=>session.controller.abort(),Math.max(1,deadline-Date.now()));
+    let latest=initial,buffer='',bytes=0,finished=false;
+    try{
+      const response=await requestStream(path,{method:'GET',headers:{Accept:'text/event-stream'},cache:'no-store',signal:session.controller.signal});
+      if(token!==generation){await response.body?.cancel();return latest;}
+      if(!response.ok||!/^text\/event-stream\b/i.test(response.headers.get('content-type')||'')||!response.body?.getReader){await response.body?.cancel();return latest;}
+      const reader=response.body.getReader();session.reader=reader;const decoder=new TextDecoder();
+      const event=block=>{
+        const data=block.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).replace(/^ /,'')).join('\n');if(!data)return;
+        const value=JSON.parse(data);if(!value||!['running','preparing','ready','error'].includes(value.status))throw Error('stream_status');
+        if(value.jobId&&value.jobId!==initial.jobId||value.versionId&&initial.versionId&&value.versionId!==initial.versionId||value.documentId&&initial.documentId&&value.documentId!==initial.documentId)throw Error('stream_identity');
+        latest=value;
+        if(value.preview)render(value,true);
+        if(value.status==='ready'||value.status==='error')finished=true;
+      };
+      while(token===generation&&!session.controller.signal.aborted&&!finished){
+        const part=await reader.read();if(token!==generation)break;
+        if(part.done)break;bytes+=part.value.byteLength;if(bytes>2*1024*1024)throw Error('stream_size');
+        buffer+=decoder.decode(part.value,{stream:true});if(buffer.length>65536)throw Error('stream_size');
+        // CRLF may itself span network chunks. Wait for a full delimiter before
+        // normalizing lines, so a split CRLF cannot invent an event boundary.
+        let match;while((match=/\r?\n\r?\n/.exec(buffer))){const block=buffer.slice(0,match.index).replaceAll('\r\n','\n');buffer=buffer.slice(match.index+match[0].length);event(block);if(finished)break;}
+      }
+    }catch{/* A read-only GET below resumes the same job without another POST. */}
+    finally{clearTimeout(timer);session.controller.abort();try{await session.reader?.cancel();}catch{}if(streaming===session)streaming=null;}
+    return latest;
   }
   async function run(item,token,prepareAgain=false){
     busy=true;status('正在读取…');
     try{
       const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
       const base=pathFor(item),query=item.versionId?'?versionId='+encodeURIComponent(item.versionId):'';
-      let data=await read(base+query),prepared=false,polls=0,submitted=false,pollQuery=query;const deadline=Date.now()+120000;
+      let data=await read(base+query),prepared=false,polls=0,submitted=false,pollQuery=query;const deadline=Date.now()+120000,streamed=new Set();
       if(token!==generation)return;if(data.status==='ready'&&data.result){render(data);return;}
       const config=await read('/ai/status');if(token!==generation)return;
       if(!config.configured){status('请先在主机连接 DeepSeek');return;}
       while(token===generation){
         if(data.status==='preparing'&&data.phase==='analysis')data={...data,status:'running'};
         if(data.status==='ready'&&data.result){render(data);return;}
+        if(data.preview)render(data,true);
         if(data.status==='body_unavailable'){
           if(prepareAgain&&!prepared){prepared=true;data=await post(base);continue;}
           throw new Error(data.error||'原文暂未取得，请稍后重试');
         }
         if(!['missing','preparing','running','error'].includes(data.status))throw new Error('暂未完成，请稍后重试');
-        if(data.status==='running'&&/^[a-f0-9]{64}$/.test(data.jobId)){const pinned=query||(data.versionId?'?versionId='+encodeURIComponent(data.versionId):'');pollQuery=pinned+(pinned?'&':'?')+'jobId='+encodeURIComponent(data.jobId);}
+        if(data.status==='running')submitted=true;
+        if(data.status==='running'&&/^[a-f0-9]{64}$/.test(data.jobId)){
+          const pinned=query||(data.versionId?'?versionId='+encodeURIComponent(data.versionId):'');pollQuery=pinned+(pinned?'&':'?')+'jobId='+encodeURIComponent(data.jobId);
+          if(!streamed.has(data.jobId)){streamed.add(data.jobId);if(!hasPreview)status('正在分析…');data=await receiveStream(base+pollQuery+'&stream=1',data,token,deadline);continue;}
+        }
         if(['missing','error'].includes(data.status)&&(item.versionId||data.versionId)){
           if(submitted)throw new Error(data.error||'暂未确认分析请求，请重试');
           submitted=true;status('正在分析…');try{data=await post(base,item.versionId||data.versionId);}catch(error){if(error.status&&error.status<500)throw error;data={status:'running'};}continue;
         }
-        status(data.status==='running'?'正在分析…':'正在准备文章…');
+        status(data.status==='running'?(hasPreview?'':'正在分析…'):'正在准备文章…');
         if(data.status==='missing'&&!prepared){prepared=true;data=await post(base);continue;}
         if(polls>=48||Date.now()>=deadline)throw new Error(data.status==='running'?'分析仍在继续，可稍后查看':'文章还在准备，请稍后重试');
         if(!await pause(token)||token!==generation)return;
@@ -56,7 +98,7 @@ export function createAnalysisUi({api,$,esc,enabled}){
     finally{if(token===generation)busy=false;}
   }
   async function open(item){
-    if(!enabled()||!item)return;target={...item};const token=invalidate();$('#analysis-title').textContent=item.title||'文章分析';$('#analysis-result').innerHTML='';$('#analysis-coverage').hidden=true;$('#analysis-dialog').showModal();await run(target,token);
+    if(!enabled()||!item)return;target={...item};const token=invalidate();nodes=null;hasPreview=false;$('#analysis-title').textContent=item.title||'文章分析';$('#analysis-result').innerHTML='';$('#analysis-coverage').hidden=true;$('#analysis-dialog').showModal();await run(target,token);
   }
   $('#analysis-close').addEventListener('click',close);$('#analysis-dialog').addEventListener('cancel',event=>{event.preventDefault();close();});
   $('#analysis-retry').addEventListener('click',()=>{if(target&&!busy)void run(target,invalidate(),true);});
