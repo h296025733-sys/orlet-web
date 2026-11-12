@@ -67,21 +67,38 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
     const container=$('#analysis-result'),doc=container.ownerDocument;
     if(doc?.createElement){
       if(!nodes){
-        const make=(tag,text)=>{const node=doc.createElement(tag);if(text)node.textContent=text;container.appendChild(node);return node;};
-        nodes={brief:make('p'),pointsHeading:make('h3','重点'),points:make('ul'),caveatsHeading:make('h3','留意'),caveats:make('ul')};nodes.brief.className='analysis-brief';
+        const make=(tag,className)=>{const node=doc.createElement(tag);node.className=className;container.appendChild(node);return node;};
+        nodes={brief:make('p','analysis-brief'),points:make('ul','analysis-points'),caveats:make('ul','analysis-notes')};
       }
       const setText=(node,text)=>{const old=node.textContent;if(old===text)return;if(node.childNodes.length===1&&node.firstChild.nodeType===3&&text.startsWith(old))node.firstChild.appendData(text.slice(old.length));else node.textContent=text;};
-      const list=(node,heading,items)=>{heading.hidden=node.hidden=!items.length;for(let i=0;i<items.length;i++){let child=node.children[i];if(!child){child=doc.createElement('li');node.appendChild(child);}setText(child,items[i]);}while(node.children.length>items.length)node.removeChild(node.lastChild);};
-      setText(nodes.brief,brief);nodes.brief.hidden=!brief;list(nodes.points,nodes.pointsHeading,points);list(nodes.caveats,nodes.caveatsHeading,caveats);
+      const setPoint=(node,text)=>{
+        const {lead,body}=pointParts(text);
+        if(!lead){setText(node,text);return;}
+        // Build the emphasis once when its colon arrives, then keep appending
+        // to the same text nodes as the reveal queue advances.
+        if(node.firstChild?.tagName?.toLowerCase()!=='strong'){node.textContent='';node.appendChild(doc.createElement('strong'));node.appendChild(doc.createElement('span'));}
+        setText(node.firstChild,lead);setText(node.lastChild,body);
+      };
+      const list=(node,items)=>{node.hidden=!items.length;for(let i=0;i<items.length;i++){let child=node.children[i];if(!child){child=doc.createElement('li');node.appendChild(child);}setPoint(child,items[i]);}while(node.children.length>items.length)node.removeChild(node.lastChild);};
+      setText(nodes.brief,brief);nodes.brief.hidden=!brief;list(nodes.points,points);list(nodes.caveats,caveats);
       const next=animate?(nodes.caveats.lastChild||nodes.points.lastChild||(!nodes.brief.hidden?nodes.brief:null)):null;
       if(next!==cursor){cursor?.classList?.remove('analysis-cursor');cursor=next;cursor?.classList?.add('analysis-cursor');}
-    }else container.innerHTML=`<p class="analysis-brief">${esc(brief)}</p>${points.length?`<h3>重点</h3><ul>${points.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}${caveats.length?`<h3>留意</h3><ul>${caveats.map(point=>`<li>${esc(point)}</li>`).join('')}</ul>`:''}`;
+    }else{
+      const pointHtml=text=>{const {lead,body}=pointParts(text);return lead?`<strong>${esc(lead)}</strong>${esc(body)}`:esc(text);};
+      container.innerHTML=`<p class="analysis-brief">${esc(brief)}</p>${points.length?`<ul class="analysis-points">${points.map(point=>`<li>${pointHtml(point)}</li>`).join('')}</ul>`:''}${caveats.length?`<ul class="analysis-notes">${caveats.map(point=>`<li>${pointHtml(point)}</li>`).join('')}</ul>`:''}`;
+    }
     hasPreview=!!brief||points.some(Boolean)||caveats.some(Boolean);
     const coverage=data.coverage||{},labels=[];
     if(coverage.textTruncated)labels.push('已截取部分正文');else if(coverage.textComplete===false)labels.push('正文尚未完整');
     $('#analysis-coverage').textContent=labels.join(' · ');$('#analysis-coverage').hidden=!labels.length;
     if(clearStatus)status('');
     if(follow)panel.scrollTop=panel.scrollHeight;
+  }
+  function pointParts(text){
+    // Treat only a short, sentence-free prefix as a label, never model HTML or
+    // Markdown. Old cached paragraphs, links and times stay ordinary text.
+    const match=/^([^：:\n。！？!?；;]{2,36}[：:])/.exec(text);
+    return match&&!/^https?:/i.test(match[1])&&/\p{L}/u.test(match[1])?{lead:match[1],body:text.slice(match[0].length)}:{lead:'',body:text};
   }
   async function receiveStream(path,initial,token,deadline){
     const session={controller:new AbortController(),reader:null};streaming=session;
