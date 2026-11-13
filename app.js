@@ -1,6 +1,6 @@
 import {interpretXhsTime} from './xhs-time.js?v=35dca5b261d0';
 import {createLibraryUi} from './library-ui.js?v=0bf8528f4618';
-import {createAnalysisUi} from './analysis-ui.js?v=73cdde0d3516';
+import {createAnalysisUi} from './analysis-ui.js?v=61aecf11f973';
 const $=s=>document.querySelector(s);
 const platforms={x:'X',xiaohongshu:'小红书',wechat:'微信公众号'};
 const visiblePlatforms=new Set(['x','xiaohongshu','wechat']);
@@ -34,7 +34,7 @@ let feedCacheRevision=0;
 const feedViewCache=new Map(),FEED_CACHE_TTL=45000;
 const renderedMarkup=new WeakMap();
 const articleNodes=new Map(),articleNodeKeys=new Map(),groupNodes=new Map();
-const pendingSourceChecks=new Set(),pendingArticleActions=new Set();
+const pendingSourceChecks=new Set(),pendingArticleActions=new Map();
 let bulkReadBusy=false,scopedReadSupported=false;
 state.monitorPlatform='';state.monitorSelected=null;state.monitorFilter='all';state.monitorQ='';state.dateMenuOpen=false;state.monitorDetailOpen=false;state.monitorManageOpen=false;state.monitorListScroll=0;state.deleteSource=null;
 function renderMarkup(element,markup){if(renderedMarkup.get(element)===markup)return;renderedMarkup.set(element,markup);element.innerHTML=markup;}
@@ -118,7 +118,7 @@ function contentHtml(content,mediaState=null,blockOffset=0){
   }).join('');
 }
 function aiAnalysisEnabled(){return state.summary?.features?.aiAnalysis===true;}
-const analysisUi=createAnalysisUi({api,$,esc,enabled:aiAnalysisEnabled});
+const analysisUi=createAnalysisUi({api,$,esc,enabled:aiAnalysisEnabled,onResultShown:markAnalysisRead});
 function articleActionContent(kind,label){const symbol=kind==='star'?'icon-star':'icon-action-'+kind;return `<svg class="article-action-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#${symbol}"/></svg><span class="article-action-label">${esc(label)}</span>`;}
 function articleTogglePresentation(kind,active){return kind==='star'?{label:active?'取消收藏':'收藏',text:active?'★ 已收藏':'☆ 收藏'}:{label:active?'标为未读':'标为已读',text:active?'标为未读':'标为已读'};}
 function articleToggleHtml(article,kind){const active=!!(kind==='star'?article.starred:article.is_read),item=articleTogglePresentation(kind,active);return `<button type="button" data-${kind}="${article.id}" class="${kind==='star'&&active?'is-starred':''}" aria-label="${item.label}" title="${item.label}" aria-pressed="${active}">${articleActionContent(kind,item.text)}</button>`;}
@@ -1057,7 +1057,56 @@ $('#read-all').addEventListener('click',async()=>{if(bulkReadBusy||!scopedReadSu
   if(key===feedViewKey()&&state.view==='unread')await refreshArticles();else if(state.readerId===null)renderFeedState();
   await refresh({skipFeedMetadata:true});toast(result.changed?`已标记 ${result.changed} 篇内容`:'当前内容已全部读过');
 }catch(e){toast(e.message);}finally{bulkReadBusy=false;renderBulkReadControl();}});
-async function patchArticle(a,patch){if(!a||pendingArticleActions.has(a.id))return;pendingArticleActions.add(a.id);setArticleBusy(a.id,true);try{if(libraryEnabled()&&'starred'in patch)await libraryUi.favorite(a,patch.starred);else await api('/articles/'+a.id,{method:'PATCH',body:JSON.stringify(patch)});if('starred'in patch)a.starred=Number(patch.starred);if('read'in patch)a.is_read=Number(patch.read);cacheArticleMetadata(a);state.articles=state.articles.map(item=>item.id===a.id?mergeArticle(item,a):item).filter(matchingArticle);renderFeedState();await refresh({skipFeedMetadata:true});}finally{pendingArticleActions.delete(a.id);setArticleBusy(a.id,false);}}
+async function patchArticle(article,patch){
+  if(!article||pendingArticleActions.has(article.id))return;
+  const id=article.id,changesRead='read'in patch;
+  const action=(async()=>{
+    if(libraryEnabled()&&'starred'in patch)await libraryUi.favorite(article,patch.starred);
+    else await api('/articles/'+id,{method:'PATCH',body:JSON.stringify(patch)});
+    if('starred'in patch)article.starred=Number(patch.starred);
+    const current=state.articles.find(item=>item.id===id);
+    const metadata=current??(state.reader?.id===id?state.reader:null)??periodPageCache?.items.find(item=>item.id===id)??article;
+    const updated=changesRead?{...metadata,is_read:Number(patch.read)}:article;
+    if(changesRead){
+      article.is_read=Number(patch.read);
+      const pending=state.pendingArticles.get(id);
+      if(pending)state.pendingArticles.set(id,{...pending,is_read:article.is_read});
+      if(state.reader?.id===id){
+        state.reader.is_read=article.is_read;
+        syncArticleToggle($('#reader-read'),'read',patch.read);
+      }
+    }
+    cacheArticleMetadata(updated);
+    const before=state.articles.length;
+    state.articles=state.articles.map(item=>item.id===id?mergeArticle(item,updated):item).filter(matchingArticle);
+    if(changesRead){
+      const removed=before-state.articles.length;
+      state.total=Math.max(0,state.total-removed);
+      if(periodPageCache&&(state.unreadOnly||state.view==='unread')){
+        if(periodPageCache.serverFiltered)periodPageCache.total=Math.max(0,periodPageCache.total-removed);
+        periodPageCache.items=periodPageCache.items.filter(matchingArticle);
+        state.nextOffset=Math.max(0,state.nextOffset-removed);
+      }
+    }
+    renderFeedState();renderPeriodCounts();
+    await refresh({skipFeedMetadata:true});
+  })();
+  pendingArticleActions.set(id,action);
+  setArticleBusy(id,true);
+  try{await action;}
+  finally{pendingArticleActions.delete(id);setArticleBusy(id,false);}
+}
+async function markAnalysisRead(item){
+  const id=item.id;
+  if(!Number.isSafeInteger(id)||id<1)return;
+  while(pendingArticleActions.has(id))await pendingArticleActions.get(id).catch(()=>{});
+  const article=state.reader?.id===id?state.reader:
+    state.articles.find(value=>value.id===id)??periodPageCache?.items.find(value=>value.id===id)??item;
+  if(!article.is_read){
+    try{await patchArticle(article,{read:true});}
+    catch{toast('已读状态暂未同步');}
+  }
+}
 async function markOriginalRead(a){if(a&&!a.is_read)await patchArticle(a,{read:true});}
 $('#articles').addEventListener('click',async event=>{if(event.target.closest('video,[data-image-retry]'))return;const original=event.target.closest('[data-original]');if(original){const a=state.articles.find(x=>x.id===Number(original.dataset.original));try{await markOriginalRead(a);}catch(e){toast(e.message);}return;}const b=event.target.closest('[data-star],[data-read],[data-open]');if(!b||b.disabled)return;const id=Number(b.dataset.star||b.dataset.read||b.dataset.open);if(b.dataset.open){if(globalThis.getSelection?.()?.toString())return;event.preventDefault();await openReader(id);return;}const a=state.articles.find(x=>x.id===id);if(!a)return;try{await patchArticle(a,b.dataset.star?{starred:!a.starred}:{read:!a.is_read});}catch(e){toast(e.message);}});
 $('#articles').addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key)||event.target.closest('button,a,video'))return;const item=event.target.closest('[data-open]');if(item){event.preventDefault();void openReader(Number(item.dataset.open));}});

@@ -42,7 +42,7 @@ export function createProgressiveReveal({draw,requestFrame=globalThis.requestAni
   };
 }
 
-export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
+export function createAnalysisUi({api,$,esc,enabled,streamRequest,onResultShown}){
   let generation=0,target=null,busy=false,waiting=null,streaming=null,nodes=null,hasPreview=false,animate=false,revealData=null,cursor=null;
   const reveal=createProgressiveReveal({draw:result=>paint({...revealData,result},false,busy)});
   const pending=new Map();
@@ -62,6 +62,15 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
     if(!animate){paint(data,partial);return;}
     if(!result.brief&&!result.keyPoints?.some(Boolean)&&!result.caveats?.some(Boolean))return;
     revealData=data;reveal.update(result);
+  }
+  async function showResult(data,item,token){
+    render(data);
+    if(animate)await reveal.drain();
+    if(!onResultShown||token!==generation||!$('#analysis-dialog').open)return;
+    const {brief,keyPoints,caveats}=data.result;
+    const parts=[brief,...(Array.isArray(keyPoints)?keyPoints:[]),...(Array.isArray(caveats)?caveats:[])];
+    if(!parts.some(text=>typeof text==='string'&&text.trim()))return;
+    void Promise.resolve().then(()=>onResultShown(item)).catch(()=>{});
   }
   function paint(data,partial=false,clearStatus=true){
     const result=(partial?data.preview:data.result)||{},brief=typeof result.brief==='string'?result.brief:'',points=Array.isArray(result.keyPoints)?result.keyPoints.filter(x=>typeof x==='string'):[],caveats=Array.isArray(result.caveats)?result.caveats.filter(x=>typeof x==='string'):[];
@@ -151,14 +160,15 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
       const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
       const base=pathFor(item),query=item.versionId?'?versionId='+encodeURIComponent(item.versionId):'';
       let data=await read(base+query),prepared=false,polls=0,submitted=false,pollQuery=query;const deadline=Date.now()+120000,streamed=new Set();
-      if(token!==generation)return;if(data.status==='ready'&&data.result){render(data);return;}
+      if(token!==generation)return;
+      if(data.status==='ready'&&data.result){await showResult(data,item,token);return;}
       const config=await read('/ai/status');if(token!==generation)return;
       if(!config.configured){status('请先在主机连接 DeepSeek');return;}
       animate=true;
       while(token===generation){
         if(data.status==='preparing'&&data.phase==='analysis')data={...data,status:'running'};
         analysisRunning=data.status==='running';
-        if(data.status==='ready'&&data.result){render(data);await reveal.drain();return;}
+        if(data.status==='ready'&&data.result){await showResult(data,item,token);return;}
         if(data.preview)render(data,true);
         if(data.status==='body_unavailable'){
           if(prepareAgain&&!prepared){prepared=true;data=await post(base);continue;}
