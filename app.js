@@ -666,7 +666,7 @@ function documentWaiting(document){
     block.type==='image'&&!block.unavailable&&(block.assetId||block.url||block.localUrl)&&active(block.mediaStatus)||
     block.type==='video'&&(block.posterAssetId||block.poster||block.posterLocalUrl)&&active(block.posterMediaStatus));
 }
-function stopReader(){globalThis.orletReaderSpeech?.stop();libraryUi.cancel();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
+function stopReader(){globalThis.orletReaderSpeech?.detach();libraryUi.cancel();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
 function renderReader(error=''){
   const article=state.reader;
   $('#reader-title').textContent=articleTitle(article);
@@ -923,6 +923,7 @@ function installImageHandlers(container){
 }
 
 $('#reader-back').addEventListener('click',closeReader);
+$('.brand')?.addEventListener('click',event=>{if(event.button||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void navigate('feed');});
 $('#reader-retry').addEventListener('click',()=>requestReaderContent(readerGeneration));
 $('#reader-analysis').addEventListener('click',()=>void analysisUi.open({...state.reader,documentId:state.readerDocument?.documentId||state.reader?.documentId,versionId:state.readerDocument?.versionId}));
 $('#articles').addEventListener('click',event=>{const button=event.target.closest('[data-analysis]');if(button){const article=state.articles.find(a=>a.id===Number(button.dataset.analysis));if(article)void analysisUi.open(article);}});

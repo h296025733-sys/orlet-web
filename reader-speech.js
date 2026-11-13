@@ -1,4 +1,4 @@
-// The reader owns this player. It never fetches articles or calls an AI service.
+// The site owns this player. It never fetches articles or calls an AI service.
 export function speechChunks(text, limit = 140) {
   const chunks = [];
   for (const paragraph of String(text || '').replace(/\r/g, '').split(/\n+/)) {
@@ -217,7 +217,7 @@ export function createArticleAudioPlayer({AudioCtor, request, assetUrl = path =>
   async function start(autoPlay = true) {
     reset(); job = null; parts = []; index = 0; deadline = Date.now() + 31 * 60000;
     const token = generation; controller = new AbortController(); shouldPlay = autoPlay; phase = 'preparing'; error = ''; emit();
-    try { const data = await request('/jobs', {method: 'POST', body: JSON.stringify({text, voiceId}), signal: controller.signal}); if (token !== generation) return; accept(data); poll(token); }
+    try { const data = await request('/jobs', {method: 'POST', body: JSON.stringify(voiceId === 'wechat-native-v1' ? {articleId: Number(key), voiceId} : {text, voiceId}), signal: controller.signal}); if (token !== generation) return; accept(data); poll(token); }
     catch (problem) { if (token === generation && problem.name !== 'AbortError') fail(problem.status === 429 ? problem.message : '本机语音暂时不可用，请稍后重试'); }
   }
   function toggle() {
@@ -263,7 +263,7 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   const message = panel.querySelector('.speech-panel-message'), positionLabel = panel.querySelector('.speech-position-value');
   const voiceSelect = panel.querySelector('.speech-voice'), rateSelect = panel.querySelector('.speech-rate');
   panel.querySelector('.speech-voice-field').remove();
-  let heading = '', currentKey = null, currentText = '', checkingService = true, panelPoint = null, dockPoint = null, dockSide = 'right', panelMoved = false, scrubbing = false, suppressDockClick = false;
+  let heading = '', currentKey = null, currentText = '', readingKey = null, readingText = '', readingHeading = '', checkingService = true, panelPoint = null, dockPoint = null, dockSide = 'right', panelMoved = false, scrubbing = false, suppressDockClick = false;
   const clock = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, '0')}`;
   function bounds() {
     const v = host.visualViewport, style = host.getComputedStyle?.(panel);
@@ -306,11 +306,13 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   const render = state => {
     const speaking = ['starting', 'playing', 'preparing', 'buffering'].includes(state.phase), isAudio = state.kind === 'audio';
     row.dataset.phase = panel.dataset.phase = dock.dataset.phase = state.phase;
-    entry.disabled = toggle.disabled = !state.supported || !state.ready || checkingService;
+    entry.disabled = !state.supported || !readingText || checkingService;
+    toggle.disabled = !state.supported || !state.ready || checkingService;
+    const readingActive = readingKey !== null && readingKey === currentKey;
     range.disabled = !state.supported || !state.ready || isAudio && !state.length;
-    entryLabel.textContent = ['preparing', 'buffering'].includes(state.phase) ? '正在准备' : speaking ? '正在朗读' : state.phase === 'paused' ? '继续朗读' : state.phase === 'ended' ? '再听一遍' : '听全文';
-    entry.setAttribute('aria-label', speaking ? '打开朗读播放器' : entryLabel.textContent);
-    entry.title = !state.supported ? '当前浏览器不支持朗读' : !state.ready ? '正文就绪后可听全文' : '打开朗读播放器';
+    entryLabel.textContent = !readingActive ? '\u542c\u5168\u6587' : ['preparing', 'buffering'].includes(state.phase) ? '正在准备' : speaking ? '正在朗读' : state.phase === 'paused' ? '继续朗读' : state.phase === 'ended' ? '再听一遍' : '听全文';
+    entry.setAttribute('aria-label', readingActive && speaking ? '打开朗读播放器' : entryLabel.textContent);
+    entry.title = !state.supported ? '当前浏览器不支持朗读' : !readingText ? '正文就绪后可听全文' : '打开朗读播放器';
     toggle.setAttribute('aria-label', speaking ? '暂停朗读' : state.phase === 'ended' ? '再听一遍' : '继续朗读');
     toggle.title = toggle.getAttribute('aria-label'); toggle.setAttribute('aria-pressed', String(speaking));
     dock.setAttribute('aria-label', `展开朗读播放器，${['preparing', 'buffering'].includes(state.phase) ? '正在准备' : speaking ? '正在朗读' : state.phase === 'ended' ? '朗读结束' : '已暂停'}`); dock.title = dock.getAttribute('aria-label') + '；可拖动';
@@ -324,8 +326,20 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
     panel.querySelector('.speech-next').disabled = !state.ready || state.phase === 'ended' || isAudio && !state.length;
     for (const [selector, label] of [['.speech-previous', isAudio ? '后退15秒' : '上一段'], ['.speech-next', isAudio ? '前进15秒' : '下一段']]) { const node = panel.querySelector(selector); node.setAttribute('aria-label', label); node.title = label; }
   };
-  let player = createSpeechPlayer({synth: host.speechSynthesis, Utterance: host.SpeechSynthesisUtterance, onChange: render});
-  entry.addEventListener('click', () => { openPanel(); if (!['playing', 'starting', 'preparing', 'buffering'].includes(player.snapshot().phase)) player.toggle(); });
+  // Never silently substitute the phone's synthetic voice for the original audio.
+  let player = typeof host.Audio === 'function'
+    ? createArticleAudioPlayer({AudioCtor: host.Audio, request: (...args) => speechRequest(...args), assetUrl: path => host.orletBackend?.url(path) || path, voices: [{id: 'wechat-native-v1', name: '微信原声'}], onChange: render})
+    : createSpeechPlayer({synth: null, Utterance: null, onChange: render});
+  entry.addEventListener('click', () => {
+    if (!readingText) return;
+    if (currentKey !== readingKey || !currentText) {
+      currentKey = readingKey; currentText = readingText; heading = readingHeading;
+      panel.querySelector('.speech-article-title').textContent = heading;
+      player.update(currentKey, currentText);
+    }
+    openPanel();
+    if (!['playing', 'starting', 'preparing', 'buffering'].includes(player.snapshot().phase)) player.toggle();
+  });
   toggle.addEventListener('click', () => player.toggle());
   panel.querySelector('.speech-previous').addEventListener('click', () => player.skip(-1));
   panel.querySelector('.speech-next').addEventListener('click', () => player.skip(1));
@@ -391,7 +405,7 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   };
   void speechRequest('/status', {signal: host.AbortSignal?.timeout?.(3500)}).then(status => {
     if (!status.available || !Array.isArray(status.voices) || !status.voices.length || typeof host.Audio !== 'function') return;
-    const preferredVoice = status.voices.some(voice => voice.id === 'kokoro-v11-fp32-zm054-s110-dc-rms012-peak089-v1') ? 'kokoro-v11-fp32-zm054-s110-dc-rms012-peak089-v1' : 'melo-zh';
+    const preferredVoice = status.engine === 'wechat-native' ? 'wechat-native-v1' : status.voices.some(voice => voice.id === 'kokoro-v11-fp32-zm054-s110-dc-rms012-peak089-v1') ? 'kokoro-v11-fp32-zm054-s110-dc-rms012-peak089-v1' : 'melo-zh';
     const voices = status.voices.filter(voice => voice.id === preferredVoice && typeof voice.name === 'string'); if (!voices.length) return;
     const previousRate = player.snapshot().rate; player.stop();
     player = createArticleAudioPlayer({AudioCtor: host.Audio, request: speechRequest, assetUrl: path => host.orletBackend?.url(path) || path, voices, onChange: render});
@@ -400,10 +414,12 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   }).catch(() => {}).finally(() => { checkingService = false; render(player.snapshot()); });
   return {
     stop() { close({clear: true}); },
+    detach() { readingKey = null; readingText = ''; readingHeading = ''; render(player.snapshot()); },
     update({key, title: nextHeading}) {
-      heading = nextHeading || ''; panel.querySelector('.speech-article-title').textContent = heading;
+      readingKey = key; readingHeading = nextHeading || '';
       const body = readerSpeechText(doc.getElementById('reader-content'));
-      currentKey = key; currentText = body ? `${heading}\n${body}` : ''; player.update(key, currentText);
+      readingText = body ? readingHeading + '\n' + body : '';
+      render(player.snapshot());
     }
   };
 }
