@@ -489,9 +489,11 @@ function scheduleFeedPrefetch(){
     finally{clearTimeout(timeout);if(prefetchController===controller)prefetchController=null;}
   },300);
 }
+function nativeWechatSource(source){return source?.platform==='wechat'&&(source.access?.mode==='wechat_native'||state.summary?.collectors?.wechat?.mode==='native');}
 function renderSources(){
   let recoveryOffered=false;let xhsRecoveryOffered=false;
   const stateWord=s=>{
+    if(nativeWechatSource(s))return !s.enabled?'已暂停':s.access?.allowed===true?'正常':(s.access?.code||s.access?.reason)==='native_unbound'?'待更新':'需处理';
     if(s.access?.allowed===false)return s.enabled?'需处理':'已暂停';
     if(!s.enabled)return '已暂停';
     if(s.status==='checking')return '更新中';
@@ -501,29 +503,30 @@ function renderSources(){
   };
   const platformSources=state.sources.filter(s=>visiblePlatforms.has(s.platform)&&(!state.monitorPlatform||s.platform===state.monitorPlatform));
   const query=state.monitorQ.toLocaleLowerCase();
-  const filtered=platformSources.filter(s=>(!query||s.name.toLocaleLowerCase().includes(query))&&(state.monitorFilter==='paused'?!s.enabled:state.monitorFilter==='attention'?s.enabled&&(s.status==='error'||s.status==='attention'||s.access?.allowed===false):true));
+  const filtered=platformSources.filter(s=>(!query||s.name.toLocaleLowerCase().includes(query))&&(state.monitorFilter==='paused'?!s.enabled:state.monitorFilter==='attention'?stateWord(s)==='需处理':true));
   const selected=filtered.find(s=>s.id===state.monitorSelected)||filtered[0];state.monitorSelected=selected?.id??null;
   const list=`<aside class="monitor-list" aria-label="订阅目录"><div class="monitor-list-heading"><span><strong>${filtered.length}</strong> 个订阅</span><select id="monitor-filter" aria-label="筛选订阅">${[['all','全部状态'],['paused','已暂停'],['attention','需处理']].map(([key,label])=>`<option value="${key}"${state.monitorFilter===key?' selected':''}>${label}</option>`).join('')}</select></div><div class="monitor-items">${filtered.map(s=>{const word=stateWord(s);return `<button class="monitor-item${s.id===selected?.id?' active':''}" data-source-select="${esc(s.id)}" aria-pressed="${s.id===selected?.id}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1),'monitor-avatar')}<span class="monitor-item-copy"><strong>${esc(s.name)}</strong><span class="monitor-item-meta">${esc(platforms[s.platform])} · ${s.article_count||0} 篇</span></span><span class="monitor-item-tail"><span class="status-badge${!s.enabled?' paused':word==='需处理'?' warn':''}">${esc(word)}</span><svg class="button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></span></button>`;}).join('')||`<div class="monitor-list-empty"><svg class="button-icon" aria-hidden="true"><use href="#icon-sources"/></svg><strong>${query?'没有匹配的订阅':state.monitorFilter==='attention'?'暂时没有需要处理的订阅':state.monitorFilter==='paused'?'没有已暂停的订阅':'还没有订阅'}</strong><p>${query?'试试其他名称或切换平台。':state.monitorFilter!=='all'?'可以切换状态，查看其他订阅。':'添加感兴趣的作者，在这里管理更新。'}</p></div>`}</div></aside>`;
   const markup=selected?[selected].map(s=>{
+    const native=nativeWechatSource(s);
     const blocked=s.access?.allowed===false;
     const word=stateWord(s),warn=word==='需处理';
-    const last=s.last_success?time(s.last_success):'等待首次检查';
+    const last=native?(s.access?.lastReceivedAt?time(s.access.lastReceivedAt):'—'):s.last_success?time(s.last_success):'等待首次检查';
     const errors={lease_expired:'检查超时，稍后重试',parser_mismatch:'暂时无法读取内容',empty:'暂时无法读取内容',network_error:'连接失败，稍后重试',wrong_tab:'请打开微信读书页面',loading:'检查超时，稍后重试',platform_error:'暂时无法读取内容'};
     const message=(blocked?s.access?.reason:s.error)||'';
-    const note=s.access?.code==='source_paused'?'':s.access?.code==='cooldown'&&s.access.retryAt?`更新暂停，预计 ${time(s.access.retryAt)} 后自动检查`:errors[message]||message;
+    const note=native||s.access?.code==='source_paused'?'':s.access?.code==='cooldown'&&s.access.retryAt?`更新暂停，预计 ${time(s.access.retryAt)} 后自动检查`:errors[message]||message;
     const platform=s.platform==='wechat'?'公众号':(platforms[s.platform]||'');
     const canOperate=s.platform==='wechat'||s.access?.allowed!==false;
-    const recover=s.platform==='wechat'&&!recoveryOffered&&['auth','login','verification','user'].includes(s.access?.code);
+    const recover=s.platform==='wechat'&&!native&&!recoveryOffered&&['auth','login','verification','user'].includes(s.access?.code);
     if(recover)recoveryOffered=true;
     const xhsRecover=s.platform==='xiaohongshu'&&!xhsRecoveryOffered&&s.access?.code==='login';
     if(xhsRecover)xhsRecoveryOffered=true;
     const recovery=recover?`<button class="secondary" data-weread-resume="${s.access.code==='user'?'user':'login'}">${s.access.code==='user'?'恢复公众号更新':'我已登录，恢复更新'}</button>`:'';
     const xhsRecovery=xhsRecover?`<button class="secondary" data-xhs-resume="login">我已登录小红书，恢复采集</button>`:'';
     const remove=!s.enabled?`<button class="danger-button outline" data-source-delete="${esc(s.id)}">删除订阅</button>`:'';
-    const manage=(canOperate?`<button class="secondary" data-toggle="${esc(s.id)}" ${blocked&&s.access?.code!=='source_paused'&&!s.enabled?'disabled':''}>${s.enabled?'暂停订阅':'恢复订阅'}</button>`:'')+remove;
-    const check=canOperate?`<button class="secondary" data-retry="${esc(s.id)}" ${blocked||!s.enabled||s.status==='checking'||pendingSourceChecks.has(s.id)?'disabled':''}>${s.status==='checking'||pendingSourceChecks.has(s.id)?'检查中…':'检查更新'}</button>`:'';
+    const manage=(canOperate?`<button class="secondary" data-toggle="${esc(s.id)}" ${!native&&blocked&&s.access?.code!=='source_paused'&&!s.enabled?'disabled':''}>${s.enabled?'暂停订阅':'恢复订阅'}</button>`:'')+remove;
+    const check=canOperate&&!native?`<button class="secondary" data-retry="${esc(s.id)}" ${blocked||!s.enabled||s.status==='checking'||pendingSourceChecks.has(s.id)?'disabled':''}>${s.status==='checking'||pendingSourceChecks.has(s.id)?'检查中…':'检查更新'}</button>`:'';
     const actions=`<div class="source-actions"><button class="primary" data-author-open="${esc(s.id)}">查看内容 <span aria-hidden="true">→</span></button>${check}</div>`;
-    return `<section class="monitor-detail"><button type="button" class="monitor-back" data-monitor-back><span aria-hidden="true">←</span> 订阅列表</button><div class="source-row${warn?' is-warn':''}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1).toUpperCase(),'source-face')}<div class="source-main"><h3 class="monitor-detail-heading" tabindex="-1"><span class="source-name">${esc(s.name)}</span></h3><p>${esc(platform)} · ${s.article_count||0} 篇内容</p></div><span class="status-badge${!s.enabled?' paused':warn?' warn':''}">${esc(word)}</span></div><dl class="monitor-dates"><div><dt>最近检查</dt><dd>${esc(last)}</dd></div><div><dt>开始订阅</dt><dd>${s.created_at?esc(time(s.created_at)):'—'}</dd></div></dl>${note?`<p class="source-error">${esc(note)}</p>`:''}${recovery||xhsRecovery?`<div class="source-recovery">${recovery}${xhsRecovery}</div>`:''}${actions}${manage?`<details class="monitor-management"${state.monitorManageOpen?' open':''}><summary>管理订阅</summary><p>暂停后停止检查，已保存的内容仍可阅读。</p><div class="source-manage-actions">${manage}</div></details>`:''}</section>`;
+    return `<section class="monitor-detail"><button type="button" class="monitor-back" data-monitor-back><span aria-hidden="true">←</span> 订阅列表</button><div class="source-row${warn?' is-warn':''}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1).toUpperCase(),'source-face')}<div class="source-main"><h3 class="monitor-detail-heading" tabindex="-1"><span class="source-name">${esc(s.name)}</span></h3><p>${esc(platform)} · ${s.article_count||0} 篇内容</p></div><span class="status-badge${!s.enabled?' paused':warn?' warn':''}">${esc(word)}</span></div><dl class="monitor-dates"><div><dt>${native?'最近接收':'最近检查'}</dt><dd>${esc(last)}</dd></div><div><dt>开始订阅</dt><dd>${s.created_at?esc(time(s.created_at)):'—'}</dd></div></dl>${note?`<p class="source-error">${esc(note)}</p>`:''}${recovery||xhsRecovery?`<div class="source-recovery">${recovery}${xhsRecovery}</div>`:''}${actions}${manage?`<details class="monitor-management"${state.monitorManageOpen?' open':''}><summary>管理订阅</summary><p>暂停后停止${native?'更新':'检查'}，已保存的内容仍可阅读。</p><div class="source-manage-actions">${manage}</div></details>`:''}</section>`;
   }).join(''):`<div class="monitor-detail monitor-empty"><svg class="button-icon" aria-hidden="true"><use href="#icon-sources"/></svg><strong>选择一个订阅</strong><p>查看更新状态，或继续阅读已收录的内容。</p></div>`;
   renderMarkup($('#sources-list'),`<div class="monitor-browser" data-detail-open="${!!selected&&state.monitorDetailOpen}">${list}${markup}</div>`);
   installAvatars($('#sources-list'));
@@ -616,7 +619,7 @@ function platformConnection(platform){
   const summary=state.summary||{},collector=summary.collectors?.[platform],access=summary.access?.[platform];
   const watch=state.watch,plan=watch?.plan;
   if(platform==='x'&&watch?.mode==='watch'&&watch.selected){const running=watch.executionEnabled&&plan?.enabled===1&&['active','blocked_queue'].includes(plan.status)&&Date.parse(plan.authorization_expires_at)>Date.now()&&(!plan.cooldown_until||Date.parse(plan.cooldown_until)<=Date.now());return{word:running?'采集中':'已暂停',connected:!!running};}
-  if(access?.allowed===false||collector?.pausedReason)return{word:'已暂停',connected:false};
+  if((collector?.mode!=='native'&&access?.allowed===false)||collector?.pausedReason)return{word:'已暂停',connected:false};
   if(collector?.partialPaused)return{word:'部分暂停',connected:false};
   if(collector){if(!collector.enabled)return{word:'未启用',connected:false};if(!collector.active)return{word:'已暂停',connected:false};return collector.clientReady?{word:'正常',connected:true}:{word:'待连接',connected:false};}
   if(!state.sources.some(s=>s.platform===platform&&s.enabled))return{word:'未启用',connected:false};
@@ -1066,7 +1069,7 @@ $('#sources-list').addEventListener('click',async event=>{
   if(remove){const source=state.sources.find(s=>s.id===remove.dataset.sourceDelete);if(!source||source.enabled)return;state.deleteSource=source.id;$('#source-delete-name').textContent=source.name;$('#source-delete-error').textContent='';$('#source-delete-dialog').showModal();return;}
   const resume=event.target.closest('[data-weread-resume]');
   if(resume){
-    if(resume.disabled)return;resume.disabled=true;
+    if(resume.disabled||state.summary?.collectors?.wechat?.mode==='native'||state.sources.some(nativeWechatSource))return;resume.disabled=true;
     try{await api('/weread/resume',{method:'POST',body:JSON.stringify(resume.dataset.wereadResume==='user'?{confirmResume:true}:{confirmBrowserLogin:true})});await refresh();toast('已安排恢复检查');}
     catch(e){toast(e.message);}finally{resume.disabled=false;}
     return;
@@ -1083,7 +1086,7 @@ $('#sources-list').addEventListener('click',async event=>{
   const b=event.target.closest('[data-retry],[data-toggle]');if(!b)return;
   const id=b.dataset.retry||b.dataset.toggle,s=state.sources.find(x=>x.id===id);
   if(b.dataset.retry){
-    if(pendingSourceChecks.has(id))return;
+    if(nativeWechatSource(s)||pendingSourceChecks.has(id))return;
     pendingSourceChecks.add(id);renderSources();
     const before={last:s?.last_success||null,count:s?.article_count||0};
     try{
