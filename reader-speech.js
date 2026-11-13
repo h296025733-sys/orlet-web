@@ -391,7 +391,8 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   };
   void speechRequest('/status', {signal: host.AbortSignal?.timeout?.(3500)}).then(status => {
     if (!status.available || !Array.isArray(status.voices) || !status.voices.length || typeof host.Audio !== 'function') return;
-    const voices = status.voices.filter(voice => voice.id === 'melo-zh' && typeof voice.name === 'string'); if (!voices.length) return;
+    const preferredVoice = status.voices.some(voice => voice.id === 'kokoro-v11-fp32-zm054-s110-dc-rms012-peak089-v1') ? 'kokoro-v11-fp32-zm054-s110-dc-rms012-peak089-v1' : 'melo-zh';
+    const voices = status.voices.filter(voice => voice.id === preferredVoice && typeof voice.name === 'string'); if (!voices.length) return;
     const previousRate = player.snapshot().rate; player.stop();
     player = createArticleAudioPlayer({AudioCtor: host.Audio, request: speechRequest, assetUrl: path => host.orletBackend?.url(path) || path, voices, onChange: render});
     voiceSelect.replaceChildren(); for (const voice of voices) { const option = doc.createElement('option'); option.value = voice.id; option.textContent = voice.name; voiceSelect.append(option); }
