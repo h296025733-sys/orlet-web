@@ -43,7 +43,26 @@ function toast(message){$('#toast').textContent=message;$('#toast').hidden=false
 function backendUrl(path){return globalThis.orletBackend?.url(path)??path;}
 function backendPath(path){return globalThis.orletBackend?.path(path)??(typeof path==='string'&&path.startsWith('/api/')?path:'');}
 globalThis.addEventListener?.('orlet-backend-change',()=>{for(const node of document.querySelectorAll?.('[src],[poster]')||[]){if(node.tagName==='VIDEO'&&!node.paused)continue;for(const attr of ['src','poster']){const p=backendPath(node.getAttribute(attr));if(p)node.setAttribute(attr,backendUrl(p));}}});
-async function api(path,options={}){const signal=options.signal||(!options.method?globalThis.AbortSignal?.timeout?.(12000):undefined),request=globalThis.orletBackend?.request??fetch;const response=await request('/api'+path,{...options,...(signal?{signal}:{}),headers:{'Content-Type':'application/json',...options.headers}});const data=await response.json();if(!response.ok){const error=new Error(data.error||'请求失败');error.status=response.status;throw error;}return data;}
+async function api(path,options={}){
+  const {signal:caller,...requestOptions}=options,controller=new AbortController(),request=globalThis.orletBackend?.request??fetch;
+  // Keep search/AI's longer caller budgets, but also bound signals that only
+  // cancel on navigation. Never replay a mutation after a timeout.
+  let timedOut=false;
+  const cancel=()=>controller.abort(),abortError=()=>Object.assign(new Error(timedOut?'请求超时，请稍后重试':'请求已取消'),{name:timedOut?'TimeoutError':'AbortError'});
+  if(caller?.aborted)throw abortError();
+  caller?.addEventListener('abort',cancel,{once:true});
+  const timeout=setTimeout(()=>{timedOut=true;controller.abort();},caller?30000:12000);
+  let interrupted;
+  const interruption=new Promise((_,reject)=>{interrupted=()=>reject(abortError());controller.signal.addEventListener('abort',interrupted,{once:true});});
+  try{
+    return await Promise.race([(async()=>{
+      const response=await request('/api'+path,{...requestOptions,signal:controller.signal,headers:{'Content-Type':'application/json',...requestOptions.headers}});
+      const data=await response.json();
+      if(!response.ok){const error=new Error(data.error||'请求失败');error.status=response.status;throw error;}
+      return data;
+    })(),interruption]);
+  }finally{clearTimeout(timeout);caller?.removeEventListener('abort',cancel);controller.signal.removeEventListener('abort',interrupted);}
+}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function time(value){if(!value||!Number.isFinite(Date.parse(value)))return '—';return briefTimeFormat.format(new Date(value));}
 function beijingDay(value){const timestamp=typeof value==='number'?value:Date.parse(value);return Number.isFinite(timestamp)?new Date(timestamp+8*3600000).toISOString().slice(0,10):null;}
