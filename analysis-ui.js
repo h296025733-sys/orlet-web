@@ -145,6 +145,7 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
     }finally{clearTimeout(timer);session.controller.abort();if(streaming===session)streaming=null;}
   }
   async function run(item,token,prepareAgain=false){
+    let analysisRunning=false;
     busy=true;status('正在读取…');
     try{
       const read=path=>api(path,globalThis.AbortSignal?.timeout?{signal:AbortSignal.timeout(30000)}:{});
@@ -156,6 +157,7 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
       animate=true;
       while(token===generation){
         if(data.status==='preparing'&&data.phase==='analysis')data={...data,status:'running'};
+        analysisRunning=data.status==='running';
         if(data.status==='ready'&&data.result){render(data);await reveal.drain();return;}
         if(data.preview)render(data,true);
         if(data.status==='body_unavailable'){
@@ -196,7 +198,15 @@ export function createAnalysisUi({api,$,esc,enabled,streamRequest}){
         if(Date.now()>=deadline)throw new Error(data.status==='running'?'分析仍在继续，可稍后查看':'文章还在准备，请稍后重试');
         polls++;try{data=await read(base+pollQuery);}catch(error){if(error.status&&error.status<500)throw error;status('正在重新连接…');}
       }
-    }catch(error){if(token===generation)status(error.status===409?'暂时无法取得正文，请稍后重试':error.status===503?'请先在主机连接 DeepSeek':['TimeoutError','AbortError'].includes(error.name)?'请求用时较长，请稍后重试':error.message||'分析暂不可用',error.status!==503);}
+    }catch(error){
+      if(token===generation){
+        // Finish displaying received text before presenting a confirmed failure.
+        // A viewing timeout does not mean the background job should be restarted.
+        if(animate)await reveal.drain();
+        if(token!==generation)return;
+        status(error.status===409?'暂时无法取得正文，请稍后重试':error.status===503?'请先在主机连接 DeepSeek':['TimeoutError','AbortError'].includes(error.name)?'请求用时较长，请稍后重试':error.message||'分析暂不可用',!analysisRunning&&error.status!==503);
+      }
+    }
     finally{if(token===generation){busy=false;animate=false;cursor?.classList?.remove('analysis-cursor');cursor=null;}}
   }
   async function open(item){
