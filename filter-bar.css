@@ -612,3 +612,47 @@ dialog .dialog-actions { gap: 10px }
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .article, .author-nav, .nav-item { transition: none; animation: none }
 }
+
+.xhs-card { cursor: pointer }
+#reader-view[data-platform="xiaohongshu"] .xhs-reader-byline { margin-bottom: 16px }
+#reader-view[data-platform="xiaohongshu"] #reader-title { font-size: clamp(21px, 3vw, 27px); margin-bottom: 14px }
+#reader-xhs-gallery { margin: 0 0 18px }
+#xhs-gallery-track {
+  display: flex;
+  height: clamp(240px, 55svh, 530px);
+  overflow: auto hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  background: #f3f5f7;
+  border: 1px solid #e0e6ec;
+  border-radius: 10px;
+}
+#xhs-gallery-track::-webkit-scrollbar { display: none }
+.xhs-gallery-slide { flex: 0 0 100%; min-width: 0; height: 100%; scroll-snap-align: start; display: flex; align-items: center; justify-content: center }
+.xhs-gallery-photo { width: 100%; height: 100%; display: block; position: relative; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: zoom-in }
+.xhs-gallery-photo img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 0 }
+.xhs-gallery-photo:focus-visible { outline-offset: -3px }
+.xhs-gallery-photo .button-icon { position: absolute; inset: auto 10px 10px auto; width: 32px; height: 32px; padding: 7px; border-radius: 50%; color: #fff; background: #1c293acc; pointer-events: none }
+.xhs-gallery-controls { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums }
+.xhs-gallery-controls button { width: 44px; height: 44px; border: 0; background: transparent; color: var(--accent); font-size: 24px; padding: 0 }
+.xhs-gallery-controls button:disabled { opacity: .35 }
+.xhs-gallery-controls span { min-width: 42px; text-align: center }
+
+#xhs-photo-viewer {
+  width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: #111921; color: #eef3f7; border: 0; border-radius: 0; overflow: hidden;
+}
+#xhs-photo-viewer[open] { display: grid; grid-template-rows: auto minmax(0,1fr) }
+.xhs-photo-tools { display: flex; gap: 8px; align-items: center; padding: 8px 12px }
+.xhs-photo-tools span { flex: 1; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums }
+.xhs-photo-tools button { width: 44px; height: 44px; padding: 0; border: 1px solid #ffffff24; border-radius: 8px; background: #ffffff12; color: inherit; font-size: 23px; line-height: 1 }
+.xhs-photo-tools button:disabled { opacity: .4 }
+.xhs-photo-tools button:focus-visible, #xhs-photo-stage:focus-visible { outline-color: #b7dbfa }
+#xhs-photo-stage { display: flex; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y }
+#xhs-photo-large { display: block; flex: none; margin: auto; max-width: none; max-height: none; object-fit: contain; user-select: none }
+@media (max-width: 700px) {
+  #xhs-gallery-track { height: min(125vw, 60svh) }
+  #reader-view[data-platform="xiaohongshu"] #reader-title { font-size: 21px }
+}
