@@ -569,6 +569,8 @@ function pushSource(source){return nativeWechatSource(source)||source?.access?.m
 function renderSources(){
   let recoveryOffered=false;let xhsRecoveryOffered=false;
   const stateWord=s=>{
+    if(s.enabled&&s.access?.code==='x_onboarding')return '接入中';
+    if(s.enabled&&s.access?.code==='x_waiting_first')return '等待首帖';
     if(pushSource(s))return !s.enabled?'已暂停':s.access?.allowed===true?'正常':(s.access?.code||s.access?.reason)==='native_unbound'?'待更新':'需处理';
     if(s.access?.allowed===false)return s.enabled?'需处理':'已暂停';
     if(!s.enabled)return '已暂停';
@@ -589,7 +591,8 @@ function renderSources(){
     const last=native?(s.access?.lastReceivedAt?time(s.access.lastReceivedAt):'—'):s.last_success?time(s.last_success):'等待首次检查';
     const errors={lease_expired:'检查超时，稍后重试',parser_mismatch:'暂时无法读取内容',empty:'暂时无法读取内容',network_error:'连接失败，稍后重试',wrong_tab:'请打开微信读书页面',loading:'检查超时，稍后重试',platform_error:'暂时无法读取内容'};
     const message=(blocked?s.access?.reason:s.error)||'';
-    const note=native||s.access?.code==='source_paused'?'':s.access?.code==='cooldown'&&s.access.retryAt?`更新暂停，预计 ${time(s.access.retryAt)} 后自动检查`:errors[message]||message;
+    const xStatus=s.platform==='x'&&['x_onboarding','x_waiting_first','x_onboarding_error'].includes(s.access?.code);
+    const note=xStatus?s.access.reason:native||s.access?.code==='source_paused'?'':s.access?.code==='cooldown'&&s.access.retryAt?`更新暂停，预计 ${time(s.access.retryAt)} 后自动检查`:errors[message]||message;
     const platform=s.platform==='wechat'?'公众号':(platforms[s.platform]||'');
     const canOperate=native||s.platform==='wechat'||s.access?.allowed!==false;
     const recover=s.platform==='wechat'&&!native&&!recoveryOffered&&['auth','login','verification','user'].includes(s.access?.code);
@@ -1247,9 +1250,41 @@ async function showSetup(){try{const data=await api('/setup');$('#extension-path
 $('#setup-open').addEventListener('click',showSetup);
 $('#notification-test').addEventListener('click',async()=>{const button=$('#notification-test');button.disabled=true;try{await api('/notifications/test',{method:'POST',body:'{}'});await refresh();toast('已排入通知测试');}catch(e){toast(e.message);renderRuntime();}});
 $('#copy-key').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#bridge-key').value);toast('已复制');}catch{$('#bridge-key').type='text';$('#bridge-key').select();toast('请手动复制');}});
-function syncSourceForm(){const p=$('#source-platform').value,xhs=p==='xiaohongshu';$('#source-url').placeholder=p==='x'?'https://x.com/NASA':xhs?'https://www.xiaohongshu.com/user/profile/…':'http://127.0.0.1:8001/feed/…';$('#source-name').placeholder=xhs?'留空，自动识别':'例如：NASA';$('#url-label').textContent=p==='wechat'?'RSS 链接':'主页链接';$('#source-interval-field').hidden=xhs;$('#source-interval').disabled=xhs;$('#source-interval').value='30';$('#source-note').textContent='';}
+function xAutoSource(platform){return platform==='x'&&state.summary?.features?.xOnboarding===true;}
+function syncSourceForm(){
+  const p=$('#source-platform').value,xhs=p==='xiaohongshu',xAuto=xAutoSource(p),url=$('#source-url');
+  url.type=xAuto?'text':'url';
+  url.placeholder=p==='x'?(xAuto?'https://x.com/用户名 或 @用户名':'https://x.com/NASA'):xhs?'https://www.xiaohongshu.com/user/profile/…':'http://127.0.0.1:8001/feed/…';
+  $('#source-name-field').hidden=xAuto;$('#source-name').disabled=xAuto;
+  $('#source-name').placeholder=xhs?'留空，自动识别':'例如：NASA';
+  $('#url-label').textContent=xAuto?'主页链接或 @用户名':p==='wechat'?'RSS 链接':'主页链接';
+  $('#source-interval-field').hidden=xhs||xAuto;$('#source-interval').disabled=xhs||xAuto;$('#source-interval').value='30';
+  $('#source-note').textContent=xAuto?'添加后，采集账号会自动关注并开启发帖通知。':'';
+}
 $('#source-platform').addEventListener('change',syncSourceForm);
-$('#source-form').addEventListener('submit',async event=>{event.preventDefault();$('#source-submit').disabled=true;$('#source-error').textContent='';try{const data=Object.fromEntries(new FormData(event.target));const isXhs=data.platform==='xiaohongshu';if(!String(data.url||'').trim()||(!isXhs&&!String(data.name||'').trim())){$('#source-error').textContent=isXhs?'请粘贴博主主页链接':'请填写名称和主页链接';$('#source-submit').disabled=false;return;}if(isXhs){await api('/xhs/add',{method:'POST',body:JSON.stringify({url:data.url,name:data.name})});$('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast('已添加订阅，稍后自动识别博主信息');return;}data.intervalMinutes=Number(data.intervalMinutes);await api('/sources',{method:'POST',body:JSON.stringify(data)});$('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast(state.summary?.access?.[data.platform]?.allowed===false?'订阅已保存，接入待确认':'订阅已添加');}catch(e){$('#source-error').textContent=e.message;}finally{$('#source-submit').disabled=false;}});
+$('#source-form').addEventListener('submit',async event=>{
+  event.preventDefault();$('#source-submit').disabled=true;$('#source-error').textContent='';
+  try{
+    const data=Object.fromEntries(new FormData(event.target)),isXhs=data.platform==='xiaohongshu',xAuto=xAutoSource(data.platform);
+    if(!String(data.url||'').trim()||(!isXhs&&!xAuto&&!String(data.name||'').trim())){
+      $('#source-error').textContent=xAuto?'请输入主页链接或 @用户名':isXhs?'请粘贴博主主页链接':'请填写名称和主页链接';
+      return;
+    }
+    let message='订阅已添加';
+    if(isXhs){
+      await api('/xhs/add',{method:'POST',body:JSON.stringify({url:data.url,name:data.name})});
+      message='已添加订阅，稍后自动识别博主信息';
+    }else if(xAuto){
+      const result=await api('/sources',{method:'POST',body:JSON.stringify({platform:'x',onboard:true,url:data.url})});
+      message=['existing','enrolled'].includes(result.onboarding)?'这个账号已在监控名单中':'正在接入 '+result.name;
+    }else{
+      data.intervalMinutes=Number(data.intervalMinutes);
+      await api('/sources',{method:'POST',body:JSON.stringify(data)});
+      if(state.summary?.access?.[data.platform]?.allowed===false)message='订阅已保存，接入待确认';
+    }
+    $('#add-dialog').close();event.target.reset();syncSourceForm();await navigate('sources');await refresh();toast(message);
+  }catch(e){$('#source-error').textContent=e.message;}finally{$('#source-submit').disabled=false;}
+});
 $('#search').addEventListener('input',()=>{clearTimeout(searchTimer);const q=$('#search').value.trim();if(state.view==='sources'){state.monitorQ=q;state.monitorSelected=null;state.monitorDetailOpen=false;state.monitorManageOpen=false;renderSources();return;}if(state.readerId!==null||state.view==='activity')return;if(libraryView()){libraryUi.search(q);return;}rememberFeedView();state.q=q;state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;cancelFeedLoad();articleRequest++;state.articles=state.articles.filter(matchingArticle);renderArticles();renderPeriodCounts();setFeedLoading(true);searchTimer=setTimeout(()=>refreshArticles().catch(e=>toast(e.message)),250);});
 $('#search-history').addEventListener('click',()=>{void selectTab('range');});
 async function loadMorePage(){const pagedViews=state.view==='feed'||state.view==='unread'||state.view==='starred';if(loadingMore||!state.hasMore||!pagedViews)return;loadingMore=true;const button=$('#load-more');button.disabled=true;try{await refreshArticles(true);}catch(e){toast(e.message);}finally{loadingMore=false;button.disabled=false;}

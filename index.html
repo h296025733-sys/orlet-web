@@ -18,7 +18,7 @@
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=7caffbf8c360"></script>
-  <script type="module" src="./app.js?v=eacba1ca2e45"></script>
+  <script type="module" src="./app.js?v=111bb504749c"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -194,7 +194,7 @@
       <select id="source-platform" name="platform" hidden><option value="x">X</option><option value="xiaohongshu">小红书</option></select>
 
       <div id="pane-author">
-        <label>名称<input name="name" id="source-name" placeholder="例如：NASA" maxlength="80"></label>
+        <label id="source-name-field">名称<input name="name" id="source-name" placeholder="例如：NASA" maxlength="80"></label>
         <label><span id="url-label">主页链接</span><input type="url" name="url" id="source-url" placeholder="https://x.com/NASA"></label>
         <label id="source-interval-field">更新频率<select name="intervalMinutes" id="source-interval"><option value="15">每 15 分钟</option><option value="30" selected>每 30 分钟</option><option value="60">每 1 小时</option><option value="120">每 2 小时</option></select></label>
         <p class="form-note" id="source-note"></p>
