@@ -750,13 +750,14 @@ function readerTranslation(doc){
   const translation=documentReaderSession?.translation;
   return translation?.versionId===doc?.versionId?translation:null;
 }
-function renderXTranslation(article,doc){
+function renderXTranslation(article,doc,previewPending){
   const host=$('#reader-x-translation');if(!host)return;
   const translation=readerTranslation(doc);
-  host.hidden=!xTranslationAvailable(article,doc)||!translation?.blocks;
+  const ready=xTranslationAvailable(article,doc)&&!!translation?.blocks;
+  host.hidden=!ready&&!previewPending;
   if(host.hidden){renderMarkup(host,'');return;}
-  const original=!!translation.original;
-  renderMarkup(host,`<button type="button" class="text-button" data-x-translate aria-pressed="${original}">${original?'显示中文':'显示原文'}</button>`);
+  const original=ready&&!!translation.original;
+  renderMarkup(host,`<button type="button" class="text-button" data-x-translate aria-pressed="${original}"${ready?'':' disabled'}>${original?'显示中文':'显示原文'}</button>`);
 }
 function translatedXRuns(block,text){
   const links=new Map((block.runs||[]).filter(run=>run.href).map(run=>[run.text,run.href]));
@@ -821,27 +822,33 @@ function renderXByline(article){
 function renderReader(error=''){
   const article=state.reader;
   $('#reader-view').setAttribute('data-platform',article?.platform||'');
-  const archived=documentReaderCurrent(),document=state.readerDocument,complete=!archived&&completeContent(article),metadata=!archived&&metadataCard(article);
-  const xFull=article?.platform==='x'&&hasDocumentBody(document);
-  $('#reader-title').textContent=article?.x_notification&&article.summary?'推文摘录':articleTitle(article);
-  $('#reader-title').hidden=article?.platform==='x'&&(xFull||!archived&&complete);
-  if(article?.x_notification&&!xFull){
-    renderMarkup($('#reader-content'),article.summary?`<p>${esc(article.summary).replace(/\r?\n/g,'<br>')}</p>`:'');
+  const archived=documentReaderCurrent(),doc=state.readerDocument,complete=!archived&&completeContent(article),metadata=!archived&&metadataCard(article);
+  const session=archived?documentReaderSession:null,hasBody=hasDocumentBody(doc);
+  const xFull=article?.platform==='x'&&hasBody;
+  const waiting=!!session&&!session.error&&!session.pollExpired&&(
+    !doc&&!!article?.x_notification||documentWaiting(doc)||(doc?.bodyStatus==='missing'&&!session.enqueued&&!session.libraryPath)
+  );
+  const xPreview=article?.x_notification&&!xFull?article.x_translation_preview||'':'';
+  const xExcerpt=article?.x_notification&&!xFull&&!xPreview&&!waiting?article.summary||'':'';
+  $('#reader-title').textContent=xExcerpt?'推文摘录':articleTitle(article);
+  $('#reader-title').hidden=article?.platform==='x'&&(xFull||complete||!!xPreview||waiting);
+  if(archived){
+    const fallback=xPreview||xExcerpt;
+    const failed=!hasBody&&(!!session.error||doc?.bodyStatus==='error'||(!waiting&&!!doc));
+    if(fallback)renderMarkup($('#reader-content'),`<p>${esc(fallback).replace(/\r?\n/g,'<br>')}</p>`);
+    else renderDocumentContent(translatedDocument(doc));
+    $('#reader-content').setAttribute?.('aria-busy',String(!hasBody&&waiting));
+    const connectionWaiting=!hasBody&&['network_error','timeout','closed'].includes(doc?.failureCode);
+    const message=hasBody?(doc.content.textComplete===false?'正文暂未完整':''):
+      session.error||(connectionWaiting?'原文连接暂不可用，将自动重试':session.pollExpired?'文章仍在准备，可刷新查看':failed?'正文暂未取得，请重试':xPreview?'':'正在准备正文…');
+    $('#reader-status').textContent=message;$('#reader-status').hidden=!message;$('#reader-status').classList.toggle('is-error',failed);
+    $('#reader-retry-wrap').hidden=!session.pollExpired&&!failed&&(waiting||!doc||!['partial','error'].includes(doc.status));
+    $('#reader-retry').textContent=session.pollExpired?'刷新':'重试';
+  }else if(xPreview||xExcerpt){
+    renderMarkup($('#reader-content'),`<p>${esc(xPreview||xExcerpt).replace(/\r?\n/g,'<br>')}</p>`);
     $('#reader-content').setAttribute?.('aria-busy','false');
     $('#reader-status').hidden=true;
     $('#reader-retry-wrap').hidden=true;
-  }else if(archived){
-    const session=documentReaderSession,hasBody=hasDocumentBody(document);
-    const waiting=documentWaiting(document)||(document?.bodyStatus==='missing'&&!session.enqueued&&!session.libraryPath);
-    const failed=!hasBody&&(!!session.error||document?.bodyStatus==='error'||(!waiting&&!!document));
-    renderDocumentContent(translatedDocument(document));
-    $('#reader-content').setAttribute?.('aria-busy',String(!hasBody&&waiting));
-    const connectionWaiting=!hasBody&&['network_error','timeout','closed'].includes(document?.failureCode);
-    const message=hasBody?(document.content.textComplete===false?'正文暂未完整':''):
-      session.error||(connectionWaiting?'原文连接暂不可用，将自动重试':session.pollExpired?'文章仍在准备，可刷新查看':failed?'正文暂未取得，请重试':'正在准备正文…');
-    $('#reader-status').textContent=message;$('#reader-status').hidden=!message;$('#reader-status').classList.toggle('is-error',failed);
-    $('#reader-retry-wrap').hidden=!session.pollExpired&&!failed&&(waiting||!document||!['partial','error'].includes(document.status));
-    $('#reader-retry').textContent=session.pollExpired?'刷新':'重试';
   }else{
     $('#reader-retry').textContent='重试';
     const failed=!!error||['error','attention'].includes(article?.content_status);
@@ -852,12 +859,13 @@ function renderReader(error=''){
     $('#reader-retry-wrap').hidden=metadata||!failed||article?.access?.allowed===false;
   }
   renderXByline(article);
-  renderXTranslation(article,document);
-  $('#reader-analysis').hidden=!aiAnalysisEnabled()||!!article?.x_notification&&!xFull;$('#reader-analysis').disabled=!article;
+  renderXTranslation(article,doc,!!xPreview&&waiting);
+  $('#reader-analysis').hidden=!aiAnalysisEnabled()||!!article?.x_notification&&!xFull&&!article.x_body_ready;
+  $('#reader-analysis').disabled=!article||!!article.x_notification&&!xFull;
   syncArticleToggle($('#reader-star'),'star',!!article?.starred);
   syncArticleToggle($('#reader-read'),'read',!!article?.is_read);
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
-  const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent=article?.platform==='x'?'原帖 ↗':'原文 ↗';
+  const source=archived?safeExternal(article?.url||doc?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent=article?.platform==='x'?'原帖 ↗':'原文 ↗';
   const index=state.articles.findIndex(item=>item.id===state.readerId);$('#reader-prev').disabled=index<=0;$('#reader-next').disabled=index<0||index>=state.articles.length-1;
   globalThis.orletReaderSpeech?.update({key:state.readerId,title:articleTitle(article),enabled:article?.platform!=='x'});
 }
@@ -941,7 +949,7 @@ async function openDocumentReader(id,selected){
   stopReader();const generation=readerGeneration;readerController=new AbortController();readerActionBusy=false;
   state.readerId=id;state.reader=selected||null;articleRequest++;
   const session=documentReaderSession={id,generation,controller:readerController,startedAt:Date.now(),polls:0,enqueued:false,busy:false,error:''};
-  updateNavigation();renderReader();scrollPage(0);$('#reader-title').focus?.({preventScroll:true});
+  updateNavigation();renderReader();scrollPage(0);($('#reader-title').hidden?$('#reader-view'):$('#reader-title')).focus?.({preventScroll:true});
   const metadata=(async()=>{
     try{
       const article=selected||await api('/articles/'+id,{signal:session.controller.signal});if(!applyReader(article,generation))return;
