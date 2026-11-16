@@ -316,6 +316,7 @@ function wechatCardHtml(a){
 }
 function feedContentHtml(content,mediaState=null){const parts=[];let images=[];const flush=()=>{if(images.length){parts.push(`<div class="feed-media-grid media-count-${Math.min(images.length,4)}">${images.map(block=>imageHtml(mediaUrl(block.url),block.alt)).join('')}</div>`);images=[];}};for(const[index,block]of(content?.blocks||[]).entries()){if(block?.type==='image'&&mediaUrl(block.url))images.push(block);else {flush();parts.push(contentHtml({blocks:[block]},mediaState,index));}}flush();return parts.join('');}
 function previewHtml(article){
+  if(article.x_notification)return article.summary?`<div class="article-summary" data-open="${article.id}" role="button" tabindex="0" aria-label="查看推文摘录">${esc(article.summary)}</div>`:'';
   const blocks=article.content?.blocks||[];
   const full=completeContent(article);
   const inline=article.platform==='x'&&full&&blocks.length<=12&&blocks.reduce((n,block)=>n+(typeof block?.text==='string'?block.text.length:0),0)<=2500;
@@ -682,7 +683,7 @@ function renderSummary(){
 function platformConnection(platform){
   const summary=state.summary||{},collector=summary.collectors?.[platform],access=summary.access?.[platform];
   const watch=state.watch,plan=watch?.plan;
-  if(platform==='x'&&watch?.mode==='watch'&&watch.selected){const running=watch.executionEnabled&&plan?.enabled===1&&['active','blocked_queue'].includes(plan.status)&&Date.parse(plan.authorization_expires_at)>Date.now()&&(!plan.cooldown_until||Date.parse(plan.cooldown_until)<=Date.now());return{word:running?'采集中':'已暂停',connected:!!running};}
+  if(platform==='x'&&collector?.mode!=='x_desktop_push'&&watch?.mode==='watch'&&watch.selected){const running=watch.executionEnabled&&plan?.enabled===1&&['active','blocked_queue'].includes(plan.status)&&Date.parse(plan.authorization_expires_at)>Date.now()&&(!plan.cooldown_until||Date.parse(plan.cooldown_until)<=Date.now());return{word:running?'采集中':'已暂停',connected:!!running};}
   if((!['native','x_desktop_push'].includes(collector?.mode)&&access?.allowed===false)||collector?.pausedReason)return{word:'已暂停',connected:false};
   if(collector?.partialPaused)return{word:'部分暂停',connected:false};
   if(collector){if(!collector.enabled)return{word:'未启用',connected:false};if(!collector.active)return{word:'已暂停',connected:false};return collector.clientReady?{word:'正常',connected:true}:{word:'待连接',connected:false};}
