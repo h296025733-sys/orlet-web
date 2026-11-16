@@ -660,3 +660,20 @@ dialog .dialog-actions { gap: 10px }
   #xhs-gallery-track { height: min(125vw, 60svh) }
   #reader-view[data-platform="xiaohongshu"] #reader-title { font-size: 21px }
 }
+
+.x-feed-context { color: var(--muted); font-size: 11px; line-height: 1.3 }
+.reader-content .x-embedded-post { margin: 16px 0; padding: 14px; border: 1px solid #dce5ed; border-radius: 10px; background: #f9fbfc; overflow-wrap: anywhere }
+.x-embedded-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; line-height: 1.35 }
+.x-embedded-head:last-child { margin-bottom: 0 }
+.reader-content .x-embedded-head a { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-strong); text-decoration: none }
+.reader-content .x-embedded-head a:hover { text-decoration: underline }
+.x-embedded-head .author-avatar { width: 32px; height: 32px; min-width: 32px; margin: 0 }
+.x-embedded-author { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 5px; font-size: 14px; min-width: 0 }
+.x-embedded-author span, .x-embedded-link, .x-embedded-kind { color: var(--muted); font-size: 12px }
+.x-embedded-kind { flex: none }
+.reader-content .x-embedded-post p { margin: 0 0 10px; white-space: pre-wrap }
+.reader-content .x-embedded-post p:last-child { margin-bottom: 0 }
+.reader-content .x-embedded-post :is(.content-image,.content-video) { margin: 12px 0 0 }
+@media (max-width: 700px) {
+  .reader-content .x-embedded-post { padding: 12px }
+}

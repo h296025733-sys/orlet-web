@@ -48,6 +48,7 @@ let updatesCursor=null,updatesBusy=false,updatesRetryAt=0,metadataBusy=false,app
 let readerGeneration=0,readerTimer=null,readerController=null,readerActionBusy=false,readerContentBusyGeneration=null;
 let documentReaderSession=null;
 const documentBlockNodes=new Map(),documentBlockKeys=new Map();
+const documentEmbeddedNodes=new Map();
 const DOCUMENT_POLL_DELAY=2500,DOCUMENT_SLOW_POLL_DELAY=10000,DOCUMENT_HIDDEN_POLL_DELAY=30000,DOCUMENT_FAST_WAIT_LIMIT=120000,DOCUMENT_WAIT_LIMIT=3600000;
 let feedScrollTop=0,imageRetrySequence=0;
 let periodPageCache=null;
@@ -224,6 +225,11 @@ function documentInlineHtml(value){
 function documentBlockHtml(block,index=0){
   if(!block||typeof block!=='object')return '';
   const attributes=`data-document-block="${esc(block.id||'block-'+index)}"`;
+  const context=block.xPost;
+  if(context&&/^[a-z0-9_]{1,15}$/i.test(context.handle)&&/^[1-9]\d{15,19}$/.test(context.id)){
+    const account='@'+context.handle,link=`https://x.com/${context.handle}/status/${context.id}`;
+    return `<header class="x-embedded-head"><a href="${link}" target="_blank" rel="noopener noreferrer">${avatarHtml(context.avatar,context.handle[0].toUpperCase(),'author-avatar platform-x')}<span class="x-embedded-author">${context.name?`<strong>${esc(context.name)}</strong>`:''}<span>${esc(account)}</span></span><span class="x-embedded-link" aria-hidden="true">↗</span></a><span class="x-embedded-kind">${xPostKindLabel(context.kind)}</span></header>`;
+  }
   if(['paragraph','heading','quote'].includes(block.type)){
     const html=documentInlineHtml(block);if(!html.trim())return '';
     const tag=block.type==='heading'?(block.level===3?'h3':'h2'):block.type==='quote'?'blockquote':'p';return `<${tag} ${attributes}>${html}</${tag}>`;
@@ -246,24 +252,52 @@ function documentBlockHtml(block,index=0){
   }
   return '';
 }
-function documentContentHtml(content){return content?.version===2&&Array.isArray(content.blocks)?content.blocks.map(documentBlockHtml).join(''):'';}
+function documentGroups(blocks){
+  const groups=[{key:null,entries:[]}];
+  for(const [index,block] of blocks.entries()){
+    if(block?.xPost)groups.push({key:String(block.id||'post-'+index),entries:[]});
+    groups.at(-1).entries.push({block,index});
+  }
+  return groups;
+}
+function documentContentHtml(content){
+  if(content?.version!==2||!Array.isArray(content.blocks))return '';
+  return documentGroups(content.blocks).map(({key,entries})=>{
+    const html=entries.map(({block,index})=>documentBlockHtml(block,index)).join('');
+    return key?`<section class="x-embedded-post">${html}</section>`:html;
+  }).join('');
+}
 function renderDocumentContent(content){
   const container=$('#reader-content'),blocks=content?.version===2&&Array.isArray(content.blocks)?content.blocks:[];
   if(!document.createElement||!container.insertBefore){renderMarkup(container,documentContentHtml(content));return;}
   // Only changed blocks are replaced when an attachment finishes saving.
-  renderedMarkup.delete(container);const nodes=[],seen=new Set();
-  for(const[index,block]of blocks.entries()){
-    const html=documentBlockHtml(block,index);if(!html)continue;
-    let key=String(block.id||'block-'+index);if(seen.has(key))key+='-'+index;seen.add(key);
-    let node=documentBlockNodes.get(key);
-    if(!node||documentBlockKeys.get(key)!==html){const holder=document.createElement('div');holder.innerHTML=html;node=holder.firstElementChild;documentBlockNodes.set(key,node);documentBlockKeys.set(key,html);}
-    nodes.push(node);
+  renderedMarkup.delete(container);const nodes=[],seen=new Set(),embeds=new Set();
+  for(const group of documentGroups(blocks)){
+    const children=group.key?[]:nodes;
+    for(const {index,block} of group.entries){
+      const html=documentBlockHtml(block,index);if(!html)continue;
+      let key=String(block.id||'block-'+index);if(seen.has(key))key+='-'+index;seen.add(key);
+      let node=documentBlockNodes.get(key);
+      if(!node||documentBlockKeys.get(key)!==html){const holder=document.createElement('div');holder.innerHTML=html;node=holder.firstElementChild;documentBlockNodes.set(key,node);documentBlockKeys.set(key,html);}
+      children.push(node);
+    }
+    if(group.key){
+      embeds.add(group.key);
+      let shell=documentEmbeddedNodes.get(group.key);
+      if(!shell){shell=document.createElement('section');shell.className='x-embedded-post';documentEmbeddedNodes.set(group.key,shell);}
+      reconcileDocumentNodes(shell,children);nodes.push(shell);
+    }
   }
+  reconcileDocumentNodes(container,nodes);
+  if(embeds.size)installAvatars(container);
+  for(const key of documentEmbeddedNodes.keys())if(!embeds.has(key))documentEmbeddedNodes.delete(key);
+  for(const key of documentBlockNodes.keys())if(!seen.has(key)){documentBlockNodes.delete(key);documentBlockKeys.delete(key);}
+}
+function reconcileDocumentNodes(parent,nodes){
   // Remove replaced placeholders before reconciliation. Otherwise inserting a
   // new early block can unnecessarily move every later node, including video.
-  const wanted=new Set(nodes);for(const node of [...(container.children||[])])if(!wanted.has(node))node.remove();
-  reconcileChildren(container,nodes);
-  for(const key of documentBlockNodes.keys())if(!seen.has(key)){documentBlockNodes.delete(key);documentBlockKeys.delete(key);}
+  const wanted=new Set(nodes);for(const node of [...(parent.children||[])])if(!wanted.has(node))node.remove();
+  reconcileChildren(parent,nodes);
 }
 function completeContent(article){return article?.content?.complete===true&&!!contentHtml(article.content,article.media_state);}
 function metadataCard(article){return article?.platform==='wechat'&&!completeContent(article);}
@@ -283,6 +317,7 @@ let xFeedOriginal=false;
 function xFeedText(article){
   return (!xFeedOriginal&&article.x_translation_preview)||article.x_original_preview||articleSummary(article)||articleTitle(article);
 }
+function xPostKindLabel(kind){return kind==='quote'?'引用帖':kind==='repost'?'转发':'';}
 // XHS avatars use the existing image cache, including its request limits.
 const avatarHosts=new Set(['wx.qlogo.cn','mmbiz.qpic.cn','mmbiz.qlogo.cn']);
 const xhsImageHost=host=>host.endsWith('.xhscdn.com')||host.endsWith('.xhscdn.net')||host==='ci.xiaohongshu.com';
@@ -312,8 +347,8 @@ function xhsCardHtml(a){
 }
 function compactArticleHtml(a){
   const x=a.platform==='x';
-  const avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase();
-  const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">${x?'X':'微信公众号'}</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
+  const avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase(),context=x?xPostKindLabel(a.x_post_kind):'';
+  const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">${x?'X':'微信公众号'}</span>${context?`<span class="x-feed-context">${context}</span>`:''}</div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
   const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}"${x?' aria-label="查看推文"':''}>${esc(x?xFeedText(a):articleTitle(a))}</button></h2>`;
   const analysis=analysisEntryHtml(a),links=analysis?`<div class="article-links">${analysis}</div>`:'';
   const foot=`<div class="wx-foot">${links}<div class="wx-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}</div></div>`;
@@ -342,7 +377,7 @@ function articleHtml(a){
   const action=documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
   return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}${action}${analysisEntryHtml(a)}</div></div></article>`;
 }
-function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,a.x_body_ready,a.platform==='x'?xFeedText(a):null,sourceAvatar(a)]);}
+function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,a.x_body_ready,a.x_post_kind,a.platform==='x'?xFeedText(a):null,sourceAvatar(a)]);}
 function mergeArticle(previous,next){const merged={...previous,...next};if(!next.content&&previous?.content)merged.content=previous.content;return merged;}
 function cacheArticleMetadata(article){
   feedCacheRevision++;
@@ -682,7 +717,7 @@ async function refreshLocalMetadata(){
     const anchor=scrollAnchor();let changed=removeSupersededX(pages.flatMap(page=>page.supersededIds||[]));
     state.articles=state.articles.map(item=>{
       const incoming=metadata.get(item.id);if(!incoming||pendingArticleActions.has(item.id))return item;
-      if(item.is_read===incoming.is_read&&item.starred===incoming.starred&&(item.favoriteDocumentId??null)===(incoming.favoriteDocumentId??null)&&item.x_body_ready===incoming.x_body_ready&&item.x_original_preview===incoming.x_original_preview&&item.x_translation_preview===incoming.x_translation_preview)return item;
+      if(item.is_read===incoming.is_read&&item.starred===incoming.starred&&(item.favoriteDocumentId??null)===(incoming.favoriteDocumentId??null)&&item.x_body_ready===incoming.x_body_ready&&item.x_post_kind===incoming.x_post_kind&&item.x_original_preview===incoming.x_original_preview&&item.x_translation_preview===incoming.x_translation_preview)return item;
       const merged={...item,...incoming,is_read:incoming.is_read,starred:incoming.starred,favoriteDocumentId:incoming.favoriteDocumentId??null};cacheArticleMetadata(merged);changed=true;return merged;
     });
     if(changed){const count=state.articles.length;state.articles=state.articles.filter(matchingArticle);state.total=Math.max(0,state.total-(count-state.articles.length));renderFeedState();renderPeriodCounts();rememberFeedView();restoreAnchor(anchor);}
@@ -774,10 +809,10 @@ function documentWaiting(document){
   const active=status=>['queued','fetching'].includes(status);
   return active(document?.bodyStatus)||(document?.content?.blocks||[]).some(block=>
     block.type==='image'&&!block.unavailable&&(block.assetId||block.url||block.localUrl)&&active(block.mediaStatus)||
-    block.type==='video'&&document.platform==='xiaohongshu'&&!!block.assetId&&active(block.mediaStatus)||
+    block.type==='video'&&['x','xiaohongshu'].includes(document.platform)&&!!block.assetId&&active(block.mediaStatus)||
     block.type==='video'&&(block.posterAssetId||block.poster||block.posterLocalUrl)&&active(block.posterMediaStatus));
 }
-function stopReader(){globalThis.orletReaderSpeech?.detach();libraryUi.cancel();resetXhsMedia();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
+function stopReader(){globalThis.orletReaderSpeech?.detach();libraryUi.cancel();resetXhsMedia();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();documentEmbeddedNodes.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
 function xTranslationAvailable(article,doc){
   return article?.platform==='x'&&state.summary?.features?.xTranslation===true&&!!doc?.versionId&&doc.content?.textComplete!==false&&doc.content?.blocks?.some(block=>['paragraph','heading','quote'].includes(block.type)&&block.text?.trim());
 }
