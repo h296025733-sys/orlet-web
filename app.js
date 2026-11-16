@@ -307,17 +307,17 @@ function xhsCardHtml(a){
   const links=documentArchiveEnabled()||aiAnalysisEnabled()?`<div class="article-links">${documentEntryHtml(a)}${analysisEntryHtml(a)}${open}</div>`:open;
   return `<article class="article xhs-card ${cover?'has-cover':''} ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${image}<div class="xhs-body"><div class="xhs-head">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar red')}<div class="xhs-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta xhs-meta"><span class="xhs-tag">小红书</span><time class="article-time"${instant?` datetime="${esc(instant)}"`:''}>${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><h2 class="xhs-title">${title}</h2><div class="xhs-foot">${links}<div class="xhs-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}</div></div></div></article>`;
 }
-function wechatCardHtml(a){
+function compactArticleHtml(a){
+  const x=a.platform==='x';
   const avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase();
-  const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">微信公众号</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
-  const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}">${esc(articleTitle(a))}</button></h2>`;
-  const links=aiAnalysisEnabled()?`<div class="article-links">${analysisEntryHtml(a)}</div>`:'';
+  const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">${x?'X':'微信公众号'}</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
+  const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}"${x?' aria-label="查看推文"':''}>${esc(x?(articleSummary(a)||articleTitle(a)):articleTitle(a))}</button></h2>`;
+  const analysis=analysisEntryHtml(a),links=analysis?`<div class="article-links">${analysis}</div>`:'';
   const foot=`<div class="wx-foot">${links}<div class="wx-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}</div></div>`;
-  return `<article class="article wechat-card ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${head}${title}${foot}</article>`;
+  return `<article class="article wechat-card${x?' x-compact-card':''} ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${head}${title}${foot}</article>`;
 }
 function feedContentHtml(content,mediaState=null){const parts=[];let images=[];const flush=()=>{if(images.length){parts.push(`<div class="feed-media-grid media-count-${Math.min(images.length,4)}">${images.map(block=>imageHtml(mediaUrl(block.url),block.alt)).join('')}</div>`);images=[];}};for(const[index,block]of(content?.blocks||[]).entries()){if(block?.type==='image'&&mediaUrl(block.url))images.push(block);else {flush();parts.push(contentHtml({blocks:[block]},mediaState,index));}}flush();return parts.join('');}
 function previewHtml(article){
-  if(article.x_notification)return article.summary?`<div class="article-summary" data-open="${article.id}" role="button" tabindex="0" aria-label="查看推文摘录">${esc(article.summary)}</div>`:'';
   const blocks=article.content?.blocks||[];
   const full=completeContent(article);
   const inline=article.platform==='x'&&full&&blocks.length<=12&&blocks.reduce((n,block)=>n+(typeof block?.text==='string'?block.text.length:0),0)<=2500;
@@ -330,14 +330,14 @@ function previewHtml(article){
 }
 function articleHtml(a){
   if(a.platform==='xiaohongshu')return xhsCardHtml(a);
-  if(a.platform==='wechat'&&documentArchiveEnabled())return wechatCardHtml(a);
+  if(a.x_notification||['wechat','x'].includes(a.platform)&&documentArchiveEnabled())return compactArticleHtml(a);
   const blocks=a.content?.blocks||[];
   const inline=a.platform==='x'&&completeContent(a)&&blocks.length<=12&&blocks.reduce((n,block)=>n+(typeof block?.text==='string'?block.text.length:0),0)<=2500;
   const metadata=metadataCard(a),source=metadata?originalLink(a):'',linkAttrs=`href="${esc(source)}" target="_blank" rel="noopener noreferrer" data-original="${a.id}"`;
-  if(metadata)return wechatCardHtml(a);
+  if(metadata)return compactArticleHtml(a);
   const title=metadata?(source?`<a class="article-title" ${linkAttrs}>${esc(articleTitle(a))}</a>`:esc(articleTitle(a))):`<button class="article-title" data-open="${a.id}">${esc(articleTitle(a))}</button>`;
-  const action=a.x_notification?`<button type="button" class="document-open" data-open="${a.id}">查看推文</button><a class="article-read" href="${esc(safeExternal(a.url))}" target="_blank" rel="noopener noreferrer" data-original="${a.id}">原帖 ↗</a>`:documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
-  return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline||a.x_notification&&a.summary?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}${action}${analysisEntryHtml(a)}</div></div></article>`;
+  const action=documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
+  return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}${action}${analysisEntryHtml(a)}</div></div></article>`;
 }
 function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,a.x_body_ready,sourceAvatar(a)]);}
 function mergeArticle(previous,next){const merged={...previous,...next};if(!next.content&&previous?.content)merged.content=previous.content;return merged;}
@@ -733,23 +733,59 @@ function documentWaiting(document){
     block.type==='video'&&(block.posterAssetId||block.poster||block.posterLocalUrl)&&active(block.posterMediaStatus));
 }
 function stopReader(){globalThis.orletReaderSpeech?.detach();libraryUi.cancel();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
+function xTranslationAvailable(article,doc){
+  return article?.platform==='x'&&state.summary?.features?.xTranslation===true&&!!doc?.versionId&&doc.content?.textComplete!==false&&doc.content?.blocks?.some(block=>['paragraph','heading','quote'].includes(block.type)&&block.text?.trim());
+}
+function readerTranslation(doc){
+  const translation=documentReaderSession?.translation;
+  return translation?.versionId===doc?.versionId?translation:null;
+}
 function renderXTranslation(article,doc){
   const host=$('#reader-x-translation');if(!host)return;
-  const text=article?.platform==='x'?(doc?.content?.blocks??article.content?.blocks??[]).map(block=>block.text||'').filter(Boolean).join('\n\n'):'';
-  host.hidden=!text;if(!text){renderMarkup(host,'');return;}
-  const chunks=[];let current='',encoded=0;
-  for(const char of text.toWellFormed()){
-    const length=encodeURIComponent(char).length;
-    // Keep long posts within the translator's text and request URL limits.
-    if(current.length>=4000||encoded+length>6500){chunks.push(current);current='';encoded=0;}
-    current+=char;encoded+=length;
+  host.hidden=!xTranslationAvailable(article,doc);
+  if(host.hidden){renderMarkup(host,'');return;}
+  const state=readerTranslation(doc),busy=state?.status==='running',visible=!!state?.visible;
+  const label=busy?'正在翻译…':visible?'查看原文':'查看翻译';
+  renderMarkup(host,`<button type="button" class="text-button" data-x-translate aria-pressed="${visible}"${busy?' disabled aria-busy="true"':''}>${label}</button>${state?.error?`<span class="x-translation-message" role="status">${esc(state.error)}</span>`:''}`);
+}
+function translatedDocument(doc){
+  const translation=readerTranslation(doc);
+  if(!translation?.visible||!translation.blocks)return doc?.content;
+  return {...doc.content,blocks:doc.content.blocks.map(block=>{
+    const text=translation.blocks.get(block.id);
+    return text===undefined?block:{...block,id:'zh-'+block.id,text,runs:undefined};
+  })};
+}
+async function toggleXTranslation(){
+  const session=documentReaderSession,doc=state.readerDocument;
+  if(!documentReaderCurrent(session)||!xTranslationAvailable(state.reader,doc))return;
+  const previous=readerTranslation(doc);
+  if(previous?.status==='running')return;
+  globalThis.getSelection?.()?.removeAllRanges();
+  const quote=$('#quote-save');if(quote)quote.hidden=true;
+  if(previous?.blocks){previous.visible=!previous.visible;renderReader();return;}
+  const versionId=doc.versionId,signal=session.controller.signal;
+  const translation=session.translation={versionId,status:'running',visible:false};
+  const current=()=>documentReaderCurrent(session)&&state.readerDocument?.versionId===versionId;
+  renderReader();
+  const path='/documents/'+encodeURIComponent(doc.documentId)+'/translation';
+  try{
+    let result=await api(path,{method:'POST',body:JSON.stringify({versionId}),signal});
+    const deadline=Date.now()+180000;
+    while(result.status==='running'&&current()&&Date.now()<deadline){
+      await new Promise(resolve=>setTimeout(resolve,1200));
+      if(!current())return;
+      result=await api(path+'?'+new URLSearchParams({versionId}),{signal});
+    }
+    if(!current())return;
+    if(result.status!=='ready'||result.versionId!==versionId||!Array.isArray(result.blocks))throw new Error(result.error||'翻译暂未完成，请再试一次');
+    translation.blocks=new Map(result.blocks.map(block=>[block.id,block.text]));
+    translation.status='ready';translation.visible=true;
+  }catch(error){
+    if(!current()||signal.aborted)return;
+    translation.status='error';translation.error=error.message||'翻译暂未完成，请再试一次';
   }
-  if(current)chunks.push(current);
-  const links=chunks.map((part,index)=>{
-    const url='https://translate.google.com/?'+new URLSearchParams({sl:'auto',tl:'zh-CN',text:part,op:'translate'});
-    return `<a class="text-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${chunks.length===1?'中文翻译 ↗':'第 '+(index+1)+' 段 ↗'}</a>`;
-  });
-  renderMarkup(host,chunks.length===1?links[0]:`<details><summary>中文翻译</summary><div>${links.join(' ')}</div></details>`);
+  if(current())renderReader();
 }
 function renderXByline(article){
   const host=$('#reader-x-byline');if(!host)return;
@@ -761,6 +797,7 @@ function renderXByline(article){
 }
 function renderReader(error=''){
   const article=state.reader;
+  $('#reader-view').setAttribute('data-platform',article?.platform||'');
   const archived=documentReaderCurrent(),document=state.readerDocument,complete=!archived&&completeContent(article),metadata=!archived&&metadataCard(article);
   const xFull=article?.platform==='x'&&hasDocumentBody(document);
   $('#reader-title').textContent=article?.x_notification&&article.summary?'推文摘录':articleTitle(article);
@@ -774,7 +811,7 @@ function renderReader(error=''){
     const session=documentReaderSession,hasBody=hasDocumentBody(document);
     const waiting=documentWaiting(document)||(document?.bodyStatus==='missing'&&!session.enqueued&&!session.libraryPath);
     const failed=!hasBody&&(!!session.error||document?.bodyStatus==='error'||(!waiting&&!!document));
-    renderDocumentContent(document?.content);
+    renderDocumentContent(translatedDocument(document));
     $('#reader-content').setAttribute?.('aria-busy',String(!hasBody&&waiting));
     const connectionWaiting=!hasBody&&['network_error','timeout','closed'].includes(document?.failureCode);
     const message=hasBody?(document.content.textComplete===false?'正文暂未完整':''):
@@ -797,7 +834,7 @@ function renderReader(error=''){
   syncArticleToggle($('#reader-star'),'star',!!article?.starred);
   syncArticleToggle($('#reader-read'),'read',!!article?.is_read);
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
-  const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent='原文 ↗';
+  const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent=article?.platform==='x'?'原帖 ↗':'原文 ↗';
   const index=state.articles.findIndex(item=>item.id===state.readerId);$('#reader-prev').disabled=index<=0;$('#reader-next').disabled=index<0||index>=state.articles.length-1;
   globalThis.orletReaderSpeech?.update({key:state.readerId,title:articleTitle(article),enabled:article?.platform!=='x'});
 }
@@ -1026,6 +1063,7 @@ $('#reader-back').addEventListener('click',closeReader);
 $('.brand')?.addEventListener('click',event=>{if(event.button||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void navigate('feed');});
 $('#reader-retry').addEventListener('click',()=>requestReaderContent(readerGeneration));
 $('#reader-analysis').addEventListener('click',()=>void analysisUi.open({...state.reader,documentId:state.readerDocument?.documentId||state.reader?.documentId,versionId:state.readerDocument?.versionId}));
+$('#reader-x-translation')?.addEventListener('click',event=>{if(event.target.closest('[data-x-translate]'))void toggleXTranslation();});
 $('#articles').addEventListener('click',event=>{const button=event.target.closest('[data-analysis]');if(button){const article=state.articles.find(a=>a.id===Number(button.dataset.analysis));if(article)void analysisUi.open(article);}});
 $('#reader-star').addEventListener('click',()=>readerAction({starred:!state.reader?.starred}));
 $('#reader-read').addEventListener('click',()=>readerAction({read:!state.reader?.is_read}));
