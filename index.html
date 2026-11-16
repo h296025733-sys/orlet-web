@@ -12,13 +12,13 @@
   <link rel="stylesheet" href="./reader-shell.css?v=76acaff4f15d">
   <link rel="stylesheet" href="./typography.css?v=cb6f7b08e07f">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
-  <link rel="stylesheet" href="./filter-bar.css?v=41e161e12cf2">
+  <link rel="stylesheet" href="./filter-bar.css?v=c6392634b35e">
   <link rel="stylesheet" href="./reader-speech.css?v=8640443e9185">
   <script type="module" src="./reader-speech.js?v=c6b8e9316c8b"></script>
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=7caffbf8c360"></script>
-  <script type="module" src="./app.js?v=c27628881060"></script>
+  <script type="module" src="./app.js?v=cf14b4134d5f"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -245,10 +245,14 @@
     <div class="xhs-photo-tools">
       <button id="xhs-photo-minus" type="button" aria-label="缩小图片">−</button>
       <button id="xhs-photo-plus" type="button" aria-label="放大图片">+</button>
-      <span id="xhs-photo-count"></span>
-      <button type="button" data-close="xhs-photo-viewer" aria-label="关闭大图" autofocus>×</button>
+      <button class="xhs-photo-close" type="button" data-close="xhs-photo-viewer" aria-label="关闭大图" autofocus>×</button>
     </div>
     <div id="xhs-photo-stage" tabindex="0" aria-label="大图"><img id="xhs-photo-large" alt="" draggable="false"></div>
+    <div id="xhs-photo-nav" class="xhs-photo-tools xhs-photo-nav" hidden>
+      <button id="xhs-photo-prev" type="button" aria-label="上一张">‹</button>
+      <span id="xhs-photo-count" aria-live="polite"></span>
+      <button id="xhs-photo-next" type="button" aria-label="下一张">›</button>
+    </div>
   </dialog>
   <div id="toast" role="status" hidden></div>
 </body>

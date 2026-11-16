@@ -644,14 +644,18 @@ dialog .dialog-actions { gap: 10px }
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background: #111921; color: #eef3f7; border: 0; border-radius: 0; overflow: hidden;
 }
-#xhs-photo-viewer[open] { display: grid; grid-template-rows: auto minmax(0,1fr) }
+#xhs-photo-viewer[open] { display: grid; grid-template-rows: auto minmax(0,1fr) auto }
 .xhs-photo-tools { display: flex; gap: 8px; align-items: center; padding: 8px 12px }
-.xhs-photo-tools span { flex: 1; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums }
+.xhs-photo-close { margin-inline-start: auto }
+.xhs-photo-nav { justify-content: center; gap: 12px }
+.xhs-photo-nav span { min-width: 52px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums }
 .xhs-photo-tools button { width: 44px; height: 44px; padding: 0; border: 1px solid #ffffff24; border-radius: 8px; background: #ffffff12; color: inherit; font-size: 23px; line-height: 1 }
 .xhs-photo-tools button:disabled { opacity: .4 }
 .xhs-photo-tools button:focus-visible, #xhs-photo-stage:focus-visible { outline-color: #b7dbfa }
-#xhs-photo-stage { display: flex; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y }
+#xhs-photo-stage { display: flex; overflow: hidden; overscroll-behavior: contain; touch-action: none }
+#xhs-photo-stage[data-zoomed] { overflow: auto; touch-action: pan-x pan-y }
 #xhs-photo-large { display: block; flex: none; margin: auto; max-width: none; max-height: none; object-fit: contain; user-select: none }
+#xhs-photo-stage:not([data-zoomed]) #xhs-photo-large { max-width: 100%; max-height: 100% }
 @media (max-width: 700px) {
   #xhs-gallery-track { height: min(125vw, 60svh) }
   #reader-view[data-platform="xiaohongshu"] #reader-title { font-size: 21px }
