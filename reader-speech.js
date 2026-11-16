@@ -415,9 +415,10 @@ export function createReaderSpeechUi(doc = globalThis.document, host = globalThi
   return {
     stop() { close({clear: true}); },
     detach() { readingKey = null; readingText = ''; readingHeading = ''; render(player.snapshot()); },
-    update({key, title: nextHeading}) {
-      readingKey = key; readingHeading = nextHeading || '';
-      const body = readerSpeechText(doc.getElementById('reader-content'));
+    update({key, title: nextHeading, enabled = true}) {
+      row.hidden = !enabled;
+      readingKey = enabled ? key : null; readingHeading = enabled ? nextHeading || '' : '';
+      const body = enabled ? readerSpeechText(doc.getElementById('reader-content')) : '';
       readingText = body ? readingHeading + '\n' + body : '';
       render(player.snapshot());
     }
