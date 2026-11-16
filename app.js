@@ -279,6 +279,10 @@ function originalLink(article){
 }
 function articleSummary(article){return article?.summary==='图片或视频动态，点击原文查看'?'':article?.summary||'';}
 function articleTitle(article){return article?.title==='图片或视频动态，点击原文查看'?'图文动态':article?.title||'';}
+let xFeedOriginal=false;
+function xFeedText(article){
+  return (!xFeedOriginal&&article.x_translation_preview)||article.x_original_preview||articleSummary(article)||articleTitle(article);
+}
 // XHS avatars use the existing image cache, including its request limits.
 const avatarHosts=new Set(['wx.qlogo.cn','mmbiz.qpic.cn','mmbiz.qlogo.cn']);
 const xhsImageHost=host=>host.endsWith('.xhscdn.com')||host.endsWith('.xhscdn.net')||host==='ci.xiaohongshu.com';
@@ -311,7 +315,7 @@ function compactArticleHtml(a){
   const x=a.platform==='x';
   const avatar=sourceAvatar(a),time=articleTime(a),initial=(a.author||'?').slice(0,1).toUpperCase();
   const head=`<div class="wx-head">${avatarHtml(avatar,initial,'wx-avatar')}<div class="wx-byline"><span class="wx-name">${esc(a.author)}</span><span class="wx-tag">${x?'X':'微信公众号'}</span></div><time class="wx-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(time)}</time><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div>`;
-  const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}"${x?' aria-label="查看推文"':''}>${esc(x?(articleSummary(a)||articleTitle(a)):articleTitle(a))}</button></h2>`;
+  const title=`<h2 class="wx-title"><button class="article-title" data-open="${a.id}"${x?' aria-label="查看推文"':''}>${esc(x?xFeedText(a):articleTitle(a))}</button></h2>`;
   const analysis=analysisEntryHtml(a),links=analysis?`<div class="article-links">${analysis}</div>`:'';
   const foot=`<div class="wx-foot">${links}<div class="wx-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}</div></div>`;
   return `<article class="article wechat-card${x?' x-compact-card':''} ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}">${head}${title}${foot}</article>`;
@@ -339,7 +343,7 @@ function articleHtml(a){
   const action=documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
   return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}${action}${analysisEntryHtml(a)}</div></div></article>`;
 }
-function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,a.x_body_ready,sourceAvatar(a)]);}
+function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,a.x_body_ready,a.platform==='x'?xFeedText(a):null,sourceAvatar(a)]);}
 function mergeArticle(previous,next){const merged={...previous,...next};if(!next.content&&previous?.content)merged.content=previous.content;return merged;}
 function cacheArticleMetadata(article){
   feedCacheRevision++;
@@ -434,6 +438,12 @@ function renderArticles(){
   if(articleNodes.size>500){const keep=new Set(state.articles.map(a=>a.id));for(const id of articleNodes.keys())if(!keep.has(id)){articleNodes.delete(id);articleNodeKeys.delete(id);}}
 }
 function renderFeedState(){
+  const language=$('#x-feed-original');
+  if(language){
+    language.hidden=!state.articles.some(article=>article.platform==='x'&&article.x_translation_preview);
+    language.textContent=xFeedOriginal?'显示中文':'显示原文';
+    language.setAttribute?.('aria-pressed',String(xFeedOriginal));
+  }
   if(periodPageCache?.complete&&state.loaded)state.total=periodPageCache.items.filter(matchingArticle).length;
   $('#feed-count').textContent=state.loaded?`${state.totalKnown?state.total:state.articles.length+'+'} 篇`:'';$('#load-more').hidden=!state.hasMore;
   $('#feed-empty').hidden=state.articles.length>0;
@@ -638,8 +648,8 @@ async function refreshLocalMetadata(){
     const anchor=scrollAnchor();let changed=false;
     state.articles=state.articles.map(item=>{
       const incoming=metadata.get(item.id);if(!incoming||pendingArticleActions.has(item.id))return item;
-      if(item.is_read===incoming.is_read&&item.starred===incoming.starred&&(item.favoriteDocumentId??null)===(incoming.favoriteDocumentId??null)&&item.x_body_ready===incoming.x_body_ready)return item;
-      const merged={...item,is_read:incoming.is_read,starred:incoming.starred,favoriteDocumentId:incoming.favoriteDocumentId??null,...(item.x_notification?{x_body_ready:incoming.x_body_ready??false}:{})};cacheArticleMetadata(merged);changed=true;return merged;
+      if(item.is_read===incoming.is_read&&item.starred===incoming.starred&&(item.favoriteDocumentId??null)===(incoming.favoriteDocumentId??null)&&item.x_body_ready===incoming.x_body_ready&&item.x_original_preview===incoming.x_original_preview&&item.x_translation_preview===incoming.x_translation_preview)return item;
+      const merged={...item,...incoming,is_read:incoming.is_read,starred:incoming.starred,favoriteDocumentId:incoming.favoriteDocumentId??null};cacheArticleMetadata(merged);changed=true;return merged;
     });
     if(changed){const count=state.articles.length;state.articles=state.articles.filter(matchingArticle);state.total=Math.max(0,state.total-(count-state.articles.length));renderFeedState();renderPeriodCounts();rememberFeedView();restoreAnchor(anchor);}
   }finally{metadataBusy=false;}
@@ -742,50 +752,63 @@ function readerTranslation(doc){
 }
 function renderXTranslation(article,doc){
   const host=$('#reader-x-translation');if(!host)return;
-  host.hidden=!xTranslationAvailable(article,doc);
+  const translation=readerTranslation(doc);
+  host.hidden=!xTranslationAvailable(article,doc)||!translation?.blocks;
   if(host.hidden){renderMarkup(host,'');return;}
-  const state=readerTranslation(doc),busy=state?.status==='running',visible=!!state?.visible;
-  const label=busy?'正在翻译…':visible?'查看原文':'查看翻译';
-  renderMarkup(host,`<button type="button" class="text-button" data-x-translate aria-pressed="${visible}"${busy?' disabled aria-busy="true"':''}>${label}</button>${state?.error?`<span class="x-translation-message" role="status">${esc(state.error)}</span>`:''}`);
+  const original=!!translation.original;
+  renderMarkup(host,`<button type="button" class="text-button" data-x-translate aria-pressed="${original}">${original?'显示中文':'显示原文'}</button>`);
+}
+function translatedXRuns(block,text){
+  const links=new Map((block.runs||[]).filter(run=>run.href).map(run=>[run.text,run.href]));
+  if(!links.size)return undefined;
+  const runs=[];
+  let end=0;
+  for(const match of text.matchAll(/https:\/\/[^\s<>"“”]+/g)){
+    const label=match[0].replace(/[),.!?，。！？]+$/u,''),href=links.get(label);
+    if(!href)continue;
+    if(match.index>end)runs.push({text:text.slice(end,match.index)});
+    runs.push({text:label,href});end=match.index+label.length;
+  }
+  if(end<text.length)runs.push({text:text.slice(end)});
+  return runs;
 }
 function translatedDocument(doc){
   const translation=readerTranslation(doc);
-  if(!translation?.visible||!translation.blocks)return doc?.content;
+  if(!translation?.blocks||translation.original)return doc?.content;
   return {...doc.content,blocks:doc.content.blocks.map(block=>{
     const text=translation.blocks.get(block.id);
-    return text===undefined?block:{...block,id:'zh-'+block.id,text,runs:undefined};
+    return text===undefined?block:{...block,id:'zh-'+block.id,text,runs:translatedXRuns(block,text)};
   })};
 }
-async function toggleXTranslation(){
+function toggleXTranslation(){
   const session=documentReaderSession,doc=state.readerDocument;
   if(!documentReaderCurrent(session)||!xTranslationAvailable(state.reader,doc))return;
-  const previous=readerTranslation(doc);
-  if(previous?.status==='running')return;
+  const translation=readerTranslation(doc);
+  if(!translation?.blocks)return;
   globalThis.getSelection?.()?.removeAllRanges();
   const quote=$('#quote-save');if(quote)quote.hidden=true;
-  if(previous?.blocks){previous.visible=!previous.visible;renderReader();return;}
-  const versionId=doc.versionId,signal=session.controller.signal;
-  const translation=session.translation={versionId,status:'running',visible:false};
-  const current=()=>documentReaderCurrent(session)&&state.readerDocument?.versionId===versionId;
+  translation.original=!translation.original;
   renderReader();
-  const path='/documents/'+encodeURIComponent(doc.documentId)+'/translation';
-  try{
-    let result=await api(path,{method:'POST',body:JSON.stringify({versionId}),signal});
-    const deadline=Date.now()+180000;
-    while(result.status==='running'&&current()&&Date.now()<deadline){
-      await new Promise(resolve=>setTimeout(resolve,1200));
+  $('#reader-x-translation')?.querySelector?.('button')?.focus({preventScroll:true});
+}
+function applyXTranslation(translation,result){
+  if(result?.status!=='ready'||result.versionId!==translation.versionId||!Array.isArray(result.blocks))return false;
+  translation.blocks=new Map(result.blocks.map(block=>[block.id,block.text]));
+  return true;
+}
+async function loadXTranslation(session,doc,translation){
+  const versionId=doc.versionId,signal=session.controller.signal;
+  const current=()=>documentReaderCurrent(session)&&state.readerDocument?.versionId===versionId;
+  const path='/documents/'+encodeURIComponent(doc.documentId)+'/translation?'+new URLSearchParams({versionId});
+  for(let attempt=0;attempt<40&&current()&&!translation.blocks;attempt++){
+    try{
+      if(attempt||doc.xTranslation)await new Promise(resolve=>setTimeout(resolve,3000));
       if(!current())return;
-      result=await api(path+'?'+new URLSearchParams({versionId}),{signal});
-    }
-    if(!current())return;
-    if(result.status!=='ready'||result.versionId!==versionId||!Array.isArray(result.blocks))throw new Error(result.error||'翻译暂未完成，请再试一次');
-    translation.blocks=new Map(result.blocks.map(block=>[block.id,block.text]));
-    translation.status='ready';translation.visible=true;
-  }catch(error){
-    if(!current()||signal.aborted)return;
-    translation.status='error';translation.error=error.message||'翻译暂未完成，请再试一次';
+      const result=await api(path,{signal});
+      if(!current()||result.status==='original')return;
+      if(applyXTranslation(translation,result)){renderReader();return;}
+    }catch{if(signal.aborted)return;}
   }
-  if(current())renderReader();
 }
 function renderXByline(article){
   const host=$('#reader-x-byline');if(!host)return;
@@ -852,6 +875,13 @@ function applyReaderDocument(document,session){
   state.readerDocument=document;
   if(!state.reader)state.reader={id:session.id,is_read:0,starred:0};
   for(const key of ['platform','author','title','url'])if(!state.reader[key]&&typeof document[key]==='string')state.reader[key]=document[key];
+  if(xTranslationAvailable(state.reader,document)){
+    const fresh=!readerTranslation(document);
+    const translation=fresh?(session.translation={versionId:document.versionId,original:false}):session.translation;
+    if(!translation.blocks&&!applyXTranslation(translation,document.xTranslation)&&fresh&&document.xTranslation?.status!=='original'){
+      void loadXTranslation(session,document,translation);
+    }
+  }
   renderReader();return true;
 }
 async function documentRequest(session,method){
@@ -1064,6 +1094,7 @@ $('.brand')?.addEventListener('click',event=>{if(event.button||event.ctrlKey||ev
 $('#reader-retry').addEventListener('click',()=>requestReaderContent(readerGeneration));
 $('#reader-analysis').addEventListener('click',()=>void analysisUi.open({...state.reader,documentId:state.readerDocument?.documentId||state.reader?.documentId,versionId:state.readerDocument?.versionId}));
 $('#reader-x-translation')?.addEventListener('click',event=>{if(event.target.closest('[data-x-translate]'))void toggleXTranslation();});
+$('#x-feed-original')?.addEventListener('click',()=>{const anchor=scrollAnchor();xFeedOriginal=!xFeedOriginal;renderFeedState();restoreAnchor(anchor);});
 $('#articles').addEventListener('click',event=>{const button=event.target.closest('[data-analysis]');if(button){const article=state.articles.find(a=>a.id===Number(button.dataset.analysis));if(article)void analysisUi.open(article);}});
 $('#reader-star').addEventListener('click',()=>readerAction({starred:!state.reader?.starred}));
 $('#reader-read').addEventListener('click',()=>readerAction({read:!state.reader?.is_read}));

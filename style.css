@@ -1717,6 +1717,7 @@ main {
 .reader-x-byline .article-header{margin-bottom:0}
 .reader-x-translation{margin:0 0 12px}
 .reader-x-translation button{font-size:13px;min-height:34px;padding:4px 0}
+#x-feed-original{min-height:44px;padding:4px 0;font-size:12px;white-space:nowrap}
 .x-translation-message{margin-left:10px;font-size:12px;color:var(--muted)}
 .reader-view[data-platform="x"] .reader-content p{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:700px){.reader-view[data-platform="x"] .reader-content{font-size:16px;line-height:1.65}}

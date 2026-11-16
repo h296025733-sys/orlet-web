@@ -8,7 +8,7 @@
   <meta name="application-name" content="Orlet">
   <meta name="theme-color" content="#f1f3f4">
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=80ce4e6bd7a2">
+  <link rel="stylesheet" href="./style.css?v=e938082282bd">
   <link rel="stylesheet" href="./reader-shell.css?v=76acaff4f15d">
   <link rel="stylesheet" href="./typography.css?v=cb6f7b08e07f">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
@@ -18,7 +18,7 @@
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=7caffbf8c360"></script>
-  <script type="module" src="./app.js?v=c288d9ccc59a"></script>
+  <script type="module" src="./app.js?v=f62bc0d9d9c5"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -119,7 +119,7 @@
         </div>
       </div>
       <section class="content-panel" id="feed-view" aria-label="内容列表">
-        <div class="feed-meta"><span id="feed-count"></span><button class="text-button" id="read-all" disabled>本区域标为已读</button><span class="timezone-label">北京时间</span></div>
+        <div class="feed-meta"><span id="feed-count"></span><button type="button" class="text-button" id="x-feed-original" hidden>显示原文</button><button class="text-button" id="read-all" disabled>本区域标为已读</button><span class="timezone-label">北京时间</span></div>
         <div class="updates-notice" id="updates-notice" role="status" hidden><span><svg class="button-icon" aria-hidden="true"><use href="#icon-update"/></svg><span id="updates-label"></span></span><button id="updates-apply">查看更新</button></div>
         <div id="articles" class="articles"></div>
         <div class="empty-state" id="feed-empty"><div class="empty-symbol"><svg class="nav-icon" aria-hidden="true"><use href="#icon-feed"/></svg></div><p id="empty-title">这里还没有内容</p><p class="empty-description" id="empty-description"></p><button class="text-button" id="search-history" hidden>查看历史结果 →</button></div>
