@@ -620,7 +620,36 @@ function renderRuntime(){
 }
 function canAutoApply(){return state.loaded&&!libraryView()&&state.readerId===null&&!['sources','activity'].includes(state.view)&&(Number(globalThis.scrollY)||0)<140&&!loadingMore&&!applyingUpdates&&![...(document.querySelectorAll?.('#articles video')||[])].some(video=>!video.paused&&!video.ended);}
 function renderUpdateNotice(){const pending=[...state.pendingArticles.values()].filter(matchingArticle),count=pending.length,newOnly=pending.every(item=>!state.articles.some(a=>a.id===item.id)&&!historicalSample(item));$('#updates-notice').hidden=!count;$('#updates-label').textContent=count?newOnly?`${count} 条新内容`:`${count} 条内容有更新`:'';$('#updates-apply').disabled=applyingUpdates;$('#updates-apply').textContent=applyingUpdates?'正在更新…':'查看更新';$('#new-content-dot').hidden=!count;clearTimeout(autoUpdateTimer);autoUpdateTimer=null;if(count&&!updatesBusy&&canAutoApply())autoUpdateTimer=setTimeout(()=>{autoUpdateTimer=null;return canAutoApply()?applyPendingUpdates():undefined;},180);}
+function removeSupersededX(ids){
+  if(!ids.length)return false;
+  const superseded=new Set(ids),keep=article=>!superseded.has(article.id);
+  for(const id of superseded)state.pendingArticles.delete(id);
+  for(const [key,view] of feedViewCache){
+    if(view.articles.some(item=>!keep(item))||view.pageCache?.items.some(item=>!keep(item)))feedViewCache.delete(key);
+  }
+  if(periodPageCache){
+    const prior=periodPageCache.items;
+    for(const item of prior){
+      if(!keep(item)){
+        const period=articlePeriod(item)==='today'?'today':'history';
+        periodPageCache.counts[period]=Math.max(0,periodPageCache.counts[period]-1);
+      }
+    }
+    periodPageCache.items=prior.filter(keep);
+    if(periodPageCache.serverFiltered)periodPageCache.total=Math.max(0,periodPageCache.total-(prior.length-periodPageCache.items.length));
+    for(const id of superseded)periodPageCache.seen.delete(id);
+  }
+  const prior=state.articles;
+  state.articles=prior.filter(keep);
+  const removed=prior.length-state.articles.length;
+  if(!removed)return false;
+  feedCacheRevision++;
+  state.total=Math.max(0,state.total-removed);
+  state.nextOffset=Math.max(0,state.nextOffset-removed);
+  return true;
+}
 function receiveUpdates(items){
+  const removed=removeSupersededX((items||[]).flatMap(item=>item.x_replaces||[]));
   let changed=false;
   for(const incoming of items||[]){
     if(!visiblePlatforms.has(incoming.platform))continue;
@@ -633,7 +662,11 @@ function receiveUpdates(items){
       else {state.articles[index]=merged;changed=true;}
     }else if(matchingArticle(merged))state.pendingArticles.set(incoming.id,merged);
   }
-  if(changed&&state.readerId===null&&!libraryView())renderArticles();renderUpdateNotice();
+  if(state.readerId===null&&!libraryView()){
+    if(removed){renderFeedState();renderPeriodCounts();}
+    else if(changed)renderArticles();
+  }
+  renderUpdateNotice();
 }
 async function refreshLocalMetadata(){
   if(metadataBusy||!state.loaded||state.readerId!==null||libraryView()||['sources','activity'].includes(state.view)||applyingUpdates)return;
@@ -645,7 +678,7 @@ async function refreshLocalMetadata(){
     const pages=await Promise.all(batches.map(batch=>api('/articles?'+new URLSearchParams({ids:batch.join(',')}))));
     if(request!==articleRequest||viewKey!==feedViewKey()||revision!==feedCacheRevision||state.readerId!==null)return;
     const metadata=new Map(pages.flatMap(page=>page.items).map(item=>[item.id,item]));
-    const anchor=scrollAnchor();let changed=false;
+    const anchor=scrollAnchor();let changed=removeSupersededX(pages.flatMap(page=>page.supersededIds||[]));
     state.articles=state.articles.map(item=>{
       const incoming=metadata.get(item.id);if(!incoming||pendingArticleActions.has(item.id))return item;
       if(item.is_read===incoming.is_read&&item.starred===incoming.starred&&(item.favoriteDocumentId??null)===(incoming.favoriteDocumentId??null)&&item.x_body_ready===incoming.x_body_ready&&item.x_original_preview===incoming.x_original_preview&&item.x_translation_preview===incoming.x_translation_preview)return item;
