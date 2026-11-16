@@ -2,6 +2,28 @@ import {interpretXhsTime} from './xhs-time.js?v=35dca5b261d0';
 import {createLibraryUi} from './library-ui.js?v=0bf8528f4618';
 import {createAnalysisUi} from './analysis-ui.js?v=61aecf11f973';
 const $=s=>document.querySelector(s);
+function readOperatorDevice(environment=globalThis){
+  const valid=value=>typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value);
+  let key='';
+  try{const saved=environment.localStorage?.getItem('orlet.operatorDevice');if(valid(saved))key=saved.toLowerCase();}catch{}
+  try{
+    const location=environment.location,params=new URLSearchParams(location?.hash?.slice(1)||'');
+    if(params.has('orlet-device')){
+      const supplied=params.get('orlet-device');
+      if(valid(supplied)){key=supplied.toLowerCase();try{environment.localStorage?.setItem('orlet.operatorDevice',key);}catch{}}
+      // Consume the binding before any request; never retain it in visible URLs.
+      params.delete('orlet-device');const remaining=params.toString();
+      environment.history?.replaceState(environment.history.state,'',location.pathname+location.search+(remaining?'#'+remaining:''));
+    }
+  }catch{}
+  return key;
+}
+let operatorDeviceKey=readOperatorDevice();
+function currentOperatorDevice(){
+  // A binding opened in another tab should apply to this tab's next action.
+  try{const saved=globalThis.localStorage?.getItem('orlet.operatorDevice');if(typeof saved==='string'&&/^[a-f0-9]{64}$/i.test(saved))operatorDeviceKey=saved.toLowerCase();}catch{}
+  return operatorDeviceKey;
+}
 const platforms={x:'X',xiaohongshu:'小红书',wechat:'微信公众号'};
 const visiblePlatforms=new Set(['x','xiaohongshu','wechat']);
 const icons={x:'𝕏',xiaohongshu:'红',wechat:'微'};
@@ -34,7 +56,7 @@ let feedCacheRevision=0;
 const feedViewCache=new Map(),FEED_CACHE_TTL=45000;
 const renderedMarkup=new WeakMap();
 const articleNodes=new Map(),articleNodeKeys=new Map(),groupNodes=new Map();
-const pendingSourceChecks=new Set(),pendingArticleActions=new Map();
+const pendingSourceChecks=new Set(),pendingSourceToggles=new Set(),pendingArticleActions=new Map();
 let bulkReadBusy=false,scopedReadSupported=false;
 state.monitorPlatform='';state.monitorSelected=null;state.monitorFilter='all';state.monitorQ='';state.dateMenuOpen=false;state.monitorDetailOpen=false;state.monitorManageOpen=false;state.monitorListScroll=0;state.deleteSource=null;
 function renderMarkup(element,markup){if(renderedMarkup.get(element)===markup)return;renderedMarkup.set(element,markup);element.innerHTML=markup;}
@@ -56,7 +78,8 @@ async function api(path,options={}){
   const interruption=new Promise((_,reject)=>{interrupted=()=>reject(abortError());controller.signal.addEventListener('abort',interrupted,{once:true});});
   try{
     return await Promise.race([(async()=>{
-      const response=await request('/api'+path,{...requestOptions,signal:controller.signal,headers:{'Content-Type':'application/json',...requestOptions.headers}});
+      const deviceKey=currentOperatorDevice();
+      const response=await request('/api'+path,{...requestOptions,signal:controller.signal,headers:{'Content-Type':'application/json',...requestOptions.headers,...(deviceKey?{'X-Orlet-Device':deviceKey}:{})}});
       const data=await response.json();
       if(!response.ok){const error=new Error(data.error||'请求失败');error.status=response.status;throw error;}
       return data;
@@ -65,6 +88,46 @@ async function api(path,options={}){
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function time(value){if(!value||!Number.isFinite(Date.parse(value)))return '—';return briefTimeFormat.format(new Date(value));}
+let activityTab='operations',operationLogSource=null,operationLogItems=[],operationLogCursor=null,operationLogBusy=false,operationLogError='',operationLogGeneration=0;
+const operationTimeFormat=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Asia/Shanghai'});
+function operationTime(value){return value&&Number.isFinite(Date.parse(value))?operationTimeFormat.format(new Date(value)):'—';}
+function renderOperationLog(){
+  const list=$('#operation-log-list');if(!list)return;
+  const filter=$('#operation-log-filter'),all=$('#operation-log-all'),more=$('#operation-log-more');
+  if(filter){filter.textContent=operationLogSource?.name||'';filter.hidden=!operationLogSource;}
+  if(all)all.hidden=!operationLogSource;
+  list.innerHTML=operationLogItems.length?operationLogItems.map(item=>`<article class="operation-row"><p><strong>${esc(item.actorLabel||({owner:'我',boss:'老板',system:'系统'}[item.actor])||'未知')}</strong> ${item.action==='pause'?'暂停了':item.action==='resume'?'恢复了':'更新了'} <span>${esc(item.sourceName)}</span></p><time datetime="${esc(item.occurredAt)}">${esc(operationTime(item.occurredAt))}</time></article>`).join(''):'';
+  const status=$('#operation-log-status');
+  if(status){status.textContent=operationLogError||(operationLogBusy&&!operationLogItems.length?'正在加载…':!operationLogBusy&&!operationLogItems.length?'暂无暂停或恢复记录':'');status.hidden=!status.textContent;}
+  if(more){more.hidden=!operationLogCursor;more.disabled=operationLogBusy;more.textContent=operationLogBusy?'正在加载…':'加载更多';}
+}
+async function loadOperationLog({append=false}={}){
+  if(append&&(operationLogBusy||!operationLogCursor))return;
+  const generation=++operationLogGeneration;operationLogBusy=true;operationLogError='';
+  if(!append){operationLogItems=[];operationLogCursor=null;}
+  renderOperationLog();
+  const query=new URLSearchParams({limit:'50'});
+  if(operationLogSource?.id)query.set('sourceId',operationLogSource.id);
+  if(append&&operationLogCursor)query.set('before',String(operationLogCursor));
+  try{
+    const data=await api('/operation-log?'+query);
+    if(generation!==operationLogGeneration)return;
+    const existing=new Set(operationLogItems.map(item=>item.id));
+    operationLogItems.push(...(Array.isArray(data.items)?data.items:[]).filter(item=>!existing.has(item.id)));
+    operationLogCursor=data.nextCursor??null;
+  }catch(error){if(generation===operationLogGeneration)operationLogError=error.message||'记录暂时无法加载';}
+  finally{if(generation===operationLogGeneration){operationLogBusy=false;renderOperationLog();}}
+}
+function selectActivityTab(tab){
+  activityTab=tab==='collection'?'collection':'operations';
+  for(const name of ['operations','collection']){const button=$('#activity-'+name);button?.setAttribute?.('aria-pressed',String(activityTab===name));button?.classList?.toggle('active',activityTab===name);}
+  const operations=$('#operation-log-panel'),events=$('#events-list');
+  if(operations)operations.hidden=activityTab!=='operations';if(events)events.hidden=activityTab!=='collection';
+}
+async function refreshOperatorLabel(){
+  const element=$('#operator-device-label');if(!element)return;
+  try{const data=await api('/operator');element.textContent=data.label||({owner:'我',boss:'老板',system:'系统'}[data.actor])||'—';element.closest?.('.settings-operator')?.removeAttribute?.('hidden');}catch{/* Identity display never blocks reading or settings. */}
+}
 function beijingDay(value){const timestamp=typeof value==='number'?value:Date.parse(value);return Number.isFinite(timestamp)?new Date(timestamp+8*3600000).toISOString().slice(0,10):null;}
 function xhsTime(article){return article?.platform==='xiaohongshu'?interpretXhsTime({rawLabel:displayLabel(article)||article.content?.timeEvidence?.rawLabel,observedAt:article.platform_time_observed_at||article.time_info?.pageTimeObservedAt||article.content?.timeEvidence?.observedAt,datetime:article.platform_time_datetime||article.content?.timeEvidence?.datetime}):null;}
 function displayInstant(article){
@@ -523,7 +586,7 @@ function renderSources(){
     const recovery=recover?`<button class="secondary" data-weread-resume="${s.access.code==='user'?'user':'login'}">${s.access.code==='user'?'恢复公众号更新':'我已登录，恢复更新'}</button>`:'';
     const xhsRecovery=xhsRecover?`<button class="secondary" data-xhs-resume="login">我已登录小红书，恢复采集</button>`:'';
     const remove=!s.enabled?`<button class="danger-button outline" data-source-delete="${esc(s.id)}">删除订阅</button>`:'';
-    const manage=(canOperate?`<button class="secondary" data-toggle="${esc(s.id)}" ${!native&&blocked&&s.access?.code!=='source_paused'&&!s.enabled?'disabled':''}>${s.enabled?'暂停订阅':'恢复订阅'}</button>`:'')+remove;
+    const manage=(canOperate?`<button class="secondary" data-toggle="${esc(s.id)}" ${pendingSourceToggles.has(s.id)||!native&&blocked&&s.access?.code!=='source_paused'&&!s.enabled?'disabled':''}>${pendingSourceToggles.has(s.id)?'正在保存…':s.enabled?'暂停订阅':'恢复订阅'}</button>`:'')+remove+`<button class="text-button" data-source-operations="${esc(s.id)}">查看操作记录</button>`;
     const check=canOperate&&!native?`<button class="secondary" data-retry="${esc(s.id)}" ${blocked||!s.enabled||s.status==='checking'||pendingSourceChecks.has(s.id)?'disabled':''}>${s.status==='checking'||pendingSourceChecks.has(s.id)?'检查中…':'检查更新'}</button>`:'';
     const actions=`<div class="source-actions"><button class="primary" data-author-open="${esc(s.id)}">查看内容 <span aria-hidden="true">→</span></button>${check}</div>`;
     return `<section class="monitor-detail"><button type="button" class="monitor-back" data-monitor-back><span aria-hidden="true">←</span> 订阅列表</button><div class="source-row${warn?' is-warn':''}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1).toUpperCase(),'source-face')}<div class="source-main"><h3 class="monitor-detail-heading" tabindex="-1"><span class="source-name">${esc(s.name)}</span></h3><p>${esc(platform)} · ${s.article_count||0} 篇内容</p></div><span class="status-badge${!s.enabled?' paused':warn?' warn':''}">${esc(word)}</span></div><dl class="monitor-dates"><div><dt>${native?'最近接收':'最近检查'}</dt><dd>${esc(last)}</dd></div><div><dt>开始订阅</dt><dd>${s.created_at?esc(time(s.created_at)):'—'}</dd></div></dl>${note?`<p class="source-error">${esc(note)}</p>`:''}${recovery||xhsRecovery?`<div class="source-recovery">${recovery}${xhsRecovery}</div>`:''}${actions}${manage?`<details class="monitor-management"${state.monitorManageOpen?' open':''}><summary>管理订阅</summary><p>暂停后停止${native?'更新':'检查'}，已保存的内容仍可阅读。</p><div class="source-manage-actions">${manage}</div></details>`:''}</section>`;
@@ -847,7 +910,7 @@ async function readerAction(patch){
   catch(e){if(readerCurrent(generation,id))toast(e.message);}
   finally{if(readerCurrent(generation,id)){readerActionBusy=false;renderReader();}}
 }
-async function navigate(view='feed',platform='',source='',{clearSearch=false}={}){const changed=state.view!==view||state.platform!==platform||state.source!==source||clearSearch&&!!state.q;clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();stopReader();state.readerId=null;state.reader=null;readerActionBusy=false;if(clearSearch)state.q='';state.rangeOpen=false;state.dateMenuOpen=false;state.view=view;if(view==='sources'){state.monitorDetailOpen=false;state.monitorManageOpen=false;state.monitorListScroll=0;}state.platform=platform;state.source=source;state.period=normalizePeriod(state.period);state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;toggleMobileNav(false);updateNavigation();if(view==='sources'){renderSources();if(mobileNavigation?.matches)scrollPage(0);}if(!['sources','activity'].includes(view))try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}}
+async function navigate(view='feed',platform='',source='',{clearSearch=false,operationSource=null}={}){const changed=state.view!==view||state.platform!==platform||state.source!==source||clearSearch&&!!state.q;clearTimeout(searchTimer);rememberFeedView();cancelFeedLoad();stopReader();state.readerId=null;state.reader=null;readerActionBusy=false;if(clearSearch)state.q='';state.rangeOpen=false;state.dateMenuOpen=false;state.view=view;if(view==='sources'){state.monitorDetailOpen=false;state.monitorManageOpen=false;state.monitorListScroll=0;}state.platform=platform;state.source=source;state.period=normalizePeriod(state.period);state.offset=0;state.nextOffset=0;state.snapshot=null;state.loaded=false;articleRequest++;toggleMobileNav(false);updateNavigation();if(view==='activity'){operationLogSource=operationSource;selectActivityTab('operations');void loadOperationLog();}if(view==='sources'){renderSources();if(mobileNavigation?.matches)scrollPage(0);}if(!['sources','activity'].includes(view))try{await refreshArticles(false,{preferCache:changed});}catch(e){toast(e.message);}}
 async function applyFeedFilter({tab=normalizeTab(state.tab),range=state.range,unreadOnly=state.unreadOnly}={}){
   const dateMenuWasOpen=!!(state.dateMenuOpen||state.rangeOpen);
   const nextTab=tab==='unread'?'all':normalizeTab(tab),nextRange=nextTab==='range'?range:null;
@@ -1033,7 +1096,7 @@ $('#wechat-search-results')?.addEventListener('click',async event=>{
   }catch(e){button.disabled=false;button.textContent='添加';$('#wechat-search-error').textContent=e.message||'添加失败';}
 });
 $('#author-add').addEventListener('click',showAdd);
-async function showSetup(){try{const data=await api('/setup');$('#extension-path').textContent=data.extensionPath;$('#bridge-key').value=data.bridgeKey;$('#setup-dialog').showModal();}catch(e){toast(e.message);}}
+async function showSetup(){try{const data=await api('/setup');$('#extension-path').textContent=data.extensionPath;$('#bridge-key').value=data.bridgeKey;$('#setup-dialog').showModal();void refreshOperatorLabel();}catch(e){toast(e.message);}}
 $('#setup-open').addEventListener('click',showSetup);
 $('#notification-test').addEventListener('click',async()=>{const button=$('#notification-test');button.disabled=true;try{await api('/notifications/test',{method:'POST',body:'{}'});await refresh();toast('已排入通知测试');}catch(e){toast(e.message);renderRuntime();}});
 $('#copy-key').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#bridge-key').value);toast('已复制');}catch{$('#bridge-key').type='text';$('#bridge-key').select();toast('请手动复制');}});
@@ -1112,6 +1175,8 @@ async function markOriginalRead(a){if(a&&!a.is_read)await patchArticle(a,{read:t
 $('#articles').addEventListener('click',async event=>{if(event.target.closest('video,[data-image-retry]'))return;const original=event.target.closest('[data-original]');if(original){const a=state.articles.find(x=>x.id===Number(original.dataset.original));try{await markOriginalRead(a);}catch(e){toast(e.message);}return;}const b=event.target.closest('[data-star],[data-read],[data-open]');if(!b||b.disabled)return;const id=Number(b.dataset.star||b.dataset.read||b.dataset.open);if(b.dataset.open){if(globalThis.getSelection?.()?.toString())return;event.preventDefault();await openReader(id);return;}const a=state.articles.find(x=>x.id===id);if(!a)return;try{await patchArticle(a,b.dataset.star?{starred:!a.starred}:{read:!a.is_read});}catch(e){toast(e.message);}});
 $('#articles').addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key)||event.target.closest('button,a,video'))return;const item=event.target.closest('[data-open]');if(item){event.preventDefault();void openReader(Number(item.dataset.open));}});
 $('#sources-list').addEventListener('click',async event=>{
+  const operations=event.target.closest('[data-source-operations]');
+  if(operations){const source=state.sources.find(item=>item.id===operations.dataset.sourceOperations);if(source)await navigate('activity','','',{operationSource:{id:source.id,name:source.name}});return;}
   const select=event.target.closest('[data-source-select]');
   if(event.target.closest('[data-monitor-back]')){state.monitorDetailOpen=false;renderSources();scrollPage(state.monitorListScroll);$('[data-source-select="'+state.monitorSelected+'"]')?.focus?.({preventScroll:true});return;}
   if(select){if(mobileNavigation?.matches)state.monitorListScroll=Number(globalThis.scrollY)||0;state.monitorSelected=select.dataset.sourceSelect;state.monitorDetailOpen=true;state.monitorManageOpen=false;renderSources();if(mobileNavigation?.matches){scrollPage(0);$('.monitor-detail-heading')?.focus?.({preventScroll:true});}return;}
@@ -1159,8 +1224,14 @@ $('#sources-list').addEventListener('click',async event=>{
     }catch(e){toast(e.message);}finally{pendingSourceChecks.delete(id);renderSources();}
     return;
   }
-  try{await api('/sources/'+id,{method:'PATCH',body:JSON.stringify({enabled:!s.enabled})});await refresh();toast(s.enabled?'已暂停这个订阅':'已恢复这个订阅');}catch(e){toast(e.message);}
+  if(!s||b.disabled||pendingSourceToggles.has(id))return;
+  pendingSourceToggles.add(id);renderSources();
+  try{await api('/sources/'+id,{method:'PATCH',body:JSON.stringify({enabled:!s.enabled})});await refresh();if(state.view==='activity'&&activityTab==='operations')void loadOperationLog();toast(s.enabled?'已暂停这个订阅':'已恢复这个订阅');}catch(e){toast(e.message);}finally{pendingSourceToggles.delete(id);renderSources();}
 });
+$('#activity-operations')?.addEventListener('click',()=>{selectActivityTab('operations');void loadOperationLog();});
+$('#activity-collection')?.addEventListener('click',()=>selectActivityTab('collection'));
+$('#operation-log-all')?.addEventListener('click',()=>{operationLogSource=null;void loadOperationLog();});
+$('#operation-log-more')?.addEventListener('click',()=>void loadOperationLog({append:true}));
 $('#sources-list').addEventListener('toggle',event=>{if(event.target.matches?.('.monitor-management'))state.monitorManageOpen=event.target.open;},true);
 $('#sources-list').addEventListener('change',event=>{if(event.target.id==='monitor-filter'){state.monitorFilter=event.target.value;state.monitorSelected=null;state.monitorDetailOpen=false;state.monitorManageOpen=false;renderSources();$('#monitor-filter').focus?.({preventScroll:true});}});
 $('#source-delete-confirm').addEventListener('click',async()=>{

@@ -1698,3 +1698,15 @@ main {
 @keyframes analysis-caret{0%,100%{opacity:1}50%{opacity:.25}}
 @media(max-width:700px){.analysis-dialog{height:min(760px,calc(var(--visual-height,100dvh)*.84))}}
 @media(prefers-reduced-motion:reduce){#analysis-status.analysis-pending::before,.analysis-result .analysis-cursor::after{animation:none}}
+
+.activity-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);padding:0 0 12px;margin-bottom:12px}
+.activity-tabs button{background:transparent;border:0;border-radius:8px;color:var(--muted,#687782);padding:9px 14px;font-size:14px;min-height:40px}
+.activity-tabs button.active{background:#e7eff4;color:#315f7d;font-weight:600}
+.operation-log-filter{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:var(--muted,#687782);font-size:13px}
+.operation-log-filter:has([hidden]):not(:has(:not([hidden]))){display:none}
+.operation-row{padding:15px 2px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.operation-row p{margin:0 0 5px;line-height:1.65;font-size:14px}
+.operation-row strong{font-weight:600;color:var(--ink)}
+.operation-row time{display:block;color:var(--muted,#687782);font-size:12px;font-variant-numeric:tabular-nums}
+#operation-log-status{color:var(--muted,#687782);padding:20px 0;font-size:14px}
+@media(max-width:700px){.activity-tabs{gap:4px;margin-bottom:8px}.activity-tabs button{padding:8px 12px}.operation-row{padding:13px 0}.operation-row p{font-size:14px}.source-manage-actions{flex-wrap:wrap}}

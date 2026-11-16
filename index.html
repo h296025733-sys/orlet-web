@@ -8,17 +8,17 @@
   <meta name="application-name" content="Orlet">
   <meta name="theme-color" content="#f1f3f4">
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=f6beaea2b93b">
-  <link rel="stylesheet" href="./reader-shell.css?v=cb1f3f42efe4">
+  <link rel="stylesheet" href="./style.css?v=a04bc908b1c5">
+  <link rel="stylesheet" href="./reader-shell.css?v=76acaff4f15d">
   <link rel="stylesheet" href="./typography.css?v=cb6f7b08e07f">
   <link rel="stylesheet" href="./quote-overlay.css?v=6fed12698ee4">
   <link rel="stylesheet" href="./filter-bar.css?v=c177d4d66dc5">
-  <script type="module" src="./reader-speech.js?v=63701f1ed4bf"></script>
   <link rel="stylesheet" href="./reader-speech.css?v=8640443e9185">
+  <script type="module" src="./reader-speech.js?v=63701f1ed4bf"></script>
   <script type="module" src="./quote-overlay.js?v=b46188669aa9"></script>
 <script src="./backend-bridge.js?v=98bfec9c4923"></script>
   <script type="module" src="./share-client.js?v=7caffbf8c360"></script>
-  <script type="module" src="./app.js?v=f33bca0388d5"></script>
+  <script type="module" src="./app.js?v=1285959536cb"></script>
 </head>
 <body>
   <svg class="svg-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -126,7 +126,11 @@
         <button class="secondary load-more" id="load-more" hidden>加载更多</button>
       </section>
       <section class="content-panel" id="sources-view" aria-label="我的监控" hidden><div id="sources-list"></div></section>
-      <section class="content-panel" id="activity-view" hidden><div id="events-list"></div></section>
+      <section class="content-panel" id="activity-view" hidden>
+        <div class="activity-tabs" role="group" aria-label="记录类型"><button id="activity-operations" class="active" aria-pressed="true">操作记录</button><button id="activity-collection" aria-pressed="false">采集记录</button></div>
+        <div id="operation-log-panel"><div class="operation-log-filter"><span id="operation-log-filter" hidden></span><button id="operation-log-all" class="text-button" hidden>查看全部</button></div><p id="operation-log-status" role="status" hidden></p><div id="operation-log-list"></div><button id="operation-log-more" class="secondary load-more" hidden>加载更多</button></div>
+        <div id="events-list" hidden></div>
+      </section>
       <section id="library-view" class="library-view" aria-label="收藏资料库" hidden>
         <div class="library-toolbar"><div class="library-kinds" role="group" aria-label="收藏类型"><button id="library-kind-articles" aria-pressed="true">文章<span class="library-kind-context">收藏</span></button><button id="library-kind-quotes" aria-pressed="false">语录<span class="library-kind-context">收藏</span></button></div><div class="library-filter-tools"><label class="sr-only" for="library-tag-filter">筛选标签</label><select id="library-tag-filter"><option value="">全部标签</option></select><button class="text-button" id="library-tags-manage" aria-label="管理标签" title="管理标签"><svg class="library-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-library-controls"/></svg><span class="library-action-label">管理标签</span></button></div></div>
         <p id="library-status" class="library-status" role="status"></p><div id="library-list" class="library-list"></div><div id="library-empty" class="empty-state" hidden></div><button id="library-more" class="secondary" hidden>加载更多</button>
@@ -219,8 +223,9 @@
   <dialog id="setup-dialog" aria-labelledby="setup-heading">
     <div class="dialog-title setup-title"><span class="setup-symbol"><svg class="button-icon" aria-hidden="true"><use href="#icon-settings"/></svg></span><div><h2 id="setup-heading">设置</h2><p>连接与内容管理</p></div><button type="button" class="icon-button" data-close="setup-dialog" aria-label="关闭设置">×</button></div>
     <section class="settings-group"><h3>平台连接</h3><div class="platform-runtime" id="platform-runtime"></div></section>
+    <section class="settings-group settings-operator" hidden><div class="runtime-row"><span>当前设备操作人</span><strong id="operator-device-label"></strong></div></section>
     <section class="settings-group settings-notifications"><div class="runtime-row"><span id="extension-version"></span><button class="secondary" id="notification-test">测试通知</button></div><p id="extension-reload" hidden>扩展待刷新</p><p id="notification-status" role="status"></p></section>
-    <div class="setup-export"><a href="/api/export" download><svg class="button-icon" aria-hidden="true"><use href="#icon-download"/></svg><span><strong>导出已保存内容</strong><small>保存一份本地副本</small></span><svg class="button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></a></div>
+    <div class="setup-export"><a href="./api/export" download><svg class="button-icon" aria-hidden="true"><use href="#icon-download"/></svg><span><strong>导出已保存内容</strong><small>保存一份本地副本</small></span><svg class="button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></a></div>
     <details class="setup-section setup-advanced"><summary>扩展连接</summary><div class="setup-section"><label>扩展目录</label><code id="extension-path"></code></div><div class="setup-section"><label for="bridge-key">配对码</label><div class="key-row"><input id="bridge-key" type="password" readonly><button class="secondary" id="copy-key">复制</button></div></div></details>
     <div class="setup-rss" hidden><a href="http://127.0.0.1:47822/" target="_blank" rel="noopener noreferrer">连接公众号 ↗</a></div>
     <div class="dialog-actions"><button type="button" class="secondary" data-close="setup-dialog">完成</button></div>
