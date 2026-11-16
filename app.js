@@ -186,7 +186,7 @@ function articleActionContent(kind,label){const symbol=kind==='star'?'icon-star'
 function articleTogglePresentation(kind,active){return kind==='star'?{label:active?'取消收藏':'收藏',text:active?'★ 已收藏':'☆ 收藏'}:{label:active?'标为未读':'标为已读',text:active?'标为未读':'标为已读'};}
 function articleToggleHtml(article,kind){const active=!!(kind==='star'?article.starred:article.is_read),item=articleTogglePresentation(kind,active);return `<button type="button" data-${kind}="${article.id}" class="${kind==='star'&&active?'is-starred':''}" aria-label="${item.label}" title="${item.label}" aria-pressed="${active}">${articleActionContent(kind,item.text)}</button>`;}
 function syncArticleToggle(button,kind,active){if(!button)return;const item=articleTogglePresentation(kind,active);button.innerHTML=articleActionContent(kind,item.text);button.setAttribute('aria-label',item.label);button.setAttribute('title',item.label);button.setAttribute('aria-pressed',String(active));if(kind==='star')button.classList.toggle('is-starred',active);}
-function analysisEntryHtml(article){return aiAnalysisEnabled()?`<button type="button" class="analysis-open" data-analysis="${article.id}" aria-label="AI 分析" title="AI 分析">${articleActionContent('analysis','AI 分析')}</button>`:'';}
+function analysisEntryHtml(article){return aiAnalysisEnabled()&&!article.x_notification?`<button type="button" class="analysis-open" data-analysis="${article.id}" aria-label="AI 分析" title="AI 分析">${articleActionContent('analysis','AI 分析')}</button>`:'';}
 function libraryEnabled(){return state.summary?.features?.library===true;}
 const libraryUi=createLibraryUi({api,$,esc,state,toast,enabled:libraryEnabled,openReader:openLibraryReader,onFavoriteChange:syncLibraryFavorite});
 function libraryView(){return libraryEnabled()&&state.view==='starred';}
@@ -334,8 +334,8 @@ function articleHtml(a){
   const metadata=metadataCard(a),source=metadata?originalLink(a):'',linkAttrs=`href="${esc(source)}" target="_blank" rel="noopener noreferrer" data-original="${a.id}"`;
   if(metadata)return wechatCardHtml(a);
   const title=metadata?(source?`<a class="article-title" ${linkAttrs}>${esc(articleTitle(a))}</a>`:esc(articleTitle(a))):`<button class="article-title" data-open="${a.id}">${esc(articleTitle(a))}</button>`;
-  const action=documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
-  return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}${action}${analysisEntryHtml(a)}</div></div></article>`;
+  const action=a.x_notification?`<a class="article-read" href="${esc(safeExternal(a.url))}" target="_blank" rel="noopener noreferrer" data-original="${a.id}">原帖 ↗</a>`:documentArchiveEnabled()?`${documentEntryHtml(a)}`:metadata?'':`<button class="article-read" data-open="${a.id}">${inline?'展开原文':'阅读全文'}<span aria-hidden="true"> →</span></button>`;
+  return `<article class="article ${a.is_read?'is-read':'is-unread'}" data-id="${a.id}"><div class="article-header">${avatarHtml(sourceAvatar(a),(a.author||'?').slice(0,1).toUpperCase(),'author-avatar '+(classes[a.platform]||''))}<div class="article-byline"><span class="article-author">${esc(a.author)}</span><div class="article-meta"><span class="platform-name">${esc(platforms[a.platform]||'')}</span><span class="meta-dot">·</span><time class="article-time"${displayInstant(a)?` datetime="${esc(displayInstant(a))}"`:''} title="${esc(articleTimeTitle(a))}">${esc(articleTime(a))}</time></div></div><span class="unread-dot" title="未读"${a.is_read?' hidden':''}></span></div><div class="article-body">${inline||a.x_notification&&a.summary?'':`<h2>${title}</h2>`}${metadata?'':previewHtml(a)}<div class="article-actions">${articleToggleHtml(a,'star')}${articleToggleHtml(a,'read')}${action}${analysisEntryHtml(a)}</div></div></article>`;
 }
 function articleContentKey(a){return JSON.stringify([documentArchiveEnabled(),aiAnalysisEnabled(),a.platform,a.author,a.title,a.summary,a.published_at,a.platform_time_at,a.platform_time_label,a.platform_time_datetime,a.platform_time_observed_at,a.cover_key||a.cover_url,a.media_state??null,a.content||null,sourceAvatar(a)]);}
 function mergeArticle(previous,next){const merged={...previous,...next};if(!next.content&&previous?.content)merged.content=previous.content;return merged;}
@@ -553,10 +553,11 @@ function scheduleFeedPrefetch(){
   },300);
 }
 function nativeWechatSource(source){return source?.platform==='wechat'&&(source.access?.mode==='wechat_native'||state.summary?.collectors?.wechat?.mode==='native');}
+function pushSource(source){return nativeWechatSource(source)||source?.access?.mode==='x_desktop_push';}
 function renderSources(){
   let recoveryOffered=false;let xhsRecoveryOffered=false;
   const stateWord=s=>{
-    if(nativeWechatSource(s))return !s.enabled?'已暂停':s.access?.allowed===true?'正常':(s.access?.code||s.access?.reason)==='native_unbound'?'待更新':'需处理';
+    if(pushSource(s))return !s.enabled?'已暂停':s.access?.allowed===true?'正常':(s.access?.code||s.access?.reason)==='native_unbound'?'待更新':'需处理';
     if(s.access?.allowed===false)return s.enabled?'需处理':'已暂停';
     if(!s.enabled)return '已暂停';
     if(s.status==='checking')return '更新中';
@@ -570,7 +571,7 @@ function renderSources(){
   const selected=filtered.find(s=>s.id===state.monitorSelected)||filtered[0];state.monitorSelected=selected?.id??null;
   const list=`<aside class="monitor-list" aria-label="订阅目录"><div class="monitor-list-heading"><span><strong>${filtered.length}</strong> 个订阅</span><select id="monitor-filter" aria-label="筛选订阅">${[['all','全部状态'],['paused','已暂停'],['attention','需处理']].map(([key,label])=>`<option value="${key}"${state.monitorFilter===key?' selected':''}>${label}</option>`).join('')}</select></div><div class="monitor-items">${filtered.map(s=>{const word=stateWord(s);return `<button class="monitor-item${s.id===selected?.id?' active':''}" data-source-select="${esc(s.id)}" aria-pressed="${s.id===selected?.id}">${avatarHtml(s.avatar,(s.name||'?').slice(0,1),'monitor-avatar')}<span class="monitor-item-copy"><strong>${esc(s.name)}</strong><span class="monitor-item-meta">${esc(platforms[s.platform])} · ${s.article_count||0} 篇</span></span><span class="monitor-item-tail"><span class="status-badge${!s.enabled?' paused':word==='需处理'?' warn':''}">${esc(word)}</span><svg class="button-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></span></button>`;}).join('')||`<div class="monitor-list-empty"><svg class="button-icon" aria-hidden="true"><use href="#icon-sources"/></svg><strong>${query?'没有匹配的订阅':state.monitorFilter==='attention'?'暂时没有需要处理的订阅':state.monitorFilter==='paused'?'没有已暂停的订阅':'还没有订阅'}</strong><p>${query?'试试其他名称或切换平台。':state.monitorFilter!=='all'?'可以切换状态，查看其他订阅。':'添加感兴趣的作者，在这里管理更新。'}</p></div>`}</div></aside>`;
   const markup=selected?[selected].map(s=>{
-    const native=nativeWechatSource(s);
+    const native=pushSource(s);
     const blocked=s.access?.allowed===false;
     const word=stateWord(s),warn=word==='需处理';
     const last=native?(s.access?.lastReceivedAt?time(s.access.lastReceivedAt):'—'):s.last_success?time(s.last_success):'等待首次检查';
@@ -578,7 +579,7 @@ function renderSources(){
     const message=(blocked?s.access?.reason:s.error)||'';
     const note=native||s.access?.code==='source_paused'?'':s.access?.code==='cooldown'&&s.access.retryAt?`更新暂停，预计 ${time(s.access.retryAt)} 后自动检查`:errors[message]||message;
     const platform=s.platform==='wechat'?'公众号':(platforms[s.platform]||'');
-    const canOperate=s.platform==='wechat'||s.access?.allowed!==false;
+    const canOperate=native||s.platform==='wechat'||s.access?.allowed!==false;
     const recover=s.platform==='wechat'&&!native&&!recoveryOffered&&['auth','login','verification','user'].includes(s.access?.code);
     if(recover)recoveryOffered=true;
     const xhsRecover=s.platform==='xiaohongshu'&&!xhsRecoveryOffered&&s.access?.code==='login';
@@ -682,7 +683,7 @@ function platformConnection(platform){
   const summary=state.summary||{},collector=summary.collectors?.[platform],access=summary.access?.[platform];
   const watch=state.watch,plan=watch?.plan;
   if(platform==='x'&&watch?.mode==='watch'&&watch.selected){const running=watch.executionEnabled&&plan?.enabled===1&&['active','blocked_queue'].includes(plan.status)&&Date.parse(plan.authorization_expires_at)>Date.now()&&(!plan.cooldown_until||Date.parse(plan.cooldown_until)<=Date.now());return{word:running?'采集中':'已暂停',connected:!!running};}
-  if((collector?.mode!=='native'&&access?.allowed===false)||collector?.pausedReason)return{word:'已暂停',connected:false};
+  if((!['native','x_desktop_push'].includes(collector?.mode)&&access?.allowed===false)||collector?.pausedReason)return{word:'已暂停',connected:false};
   if(collector?.partialPaused)return{word:'部分暂停',connected:false};
   if(collector){if(!collector.enabled)return{word:'未启用',connected:false};if(!collector.active)return{word:'已暂停',connected:false};return collector.clientReady?{word:'正常',connected:true}:{word:'待连接',connected:false};}
   if(!state.sources.some(s=>s.platform===platform&&s.enabled))return{word:'未启用',connected:false};
@@ -732,10 +733,15 @@ function documentWaiting(document){
 function stopReader(){globalThis.orletReaderSpeech?.detach();libraryUi.cancel();readerGeneration++;clearTimeout(readerTimer);readerTimer=null;readerController?.abort();readerController=null;readerContentBusyGeneration=null;documentReaderSession=null;state.readerDocument=null;documentBlockNodes.clear();documentBlockKeys.clear();renderedMarkup.delete($('#reader-content'));for(const video of $('#reader-content').querySelectorAll?.('video')||[])video.pause();}
 function renderReader(error=''){
   const article=state.reader;
-  $('#reader-title').textContent=articleTitle(article);
+  $('#reader-title').textContent=article?.x_notification&&article.summary?'推文摘录':articleTitle(article);
   const archived=documentReaderCurrent(),document=state.readerDocument,complete=!archived&&completeContent(article),metadata=!archived&&metadataCard(article);
   $('#reader-title').hidden=!archived&&complete&&article?.platform==='x';
-  if(archived){
+  if(article?.x_notification){
+    renderMarkup($('#reader-content'),article.summary?`<p>${esc(article.summary).replace(/\r?\n/g,'<br>')}</p>`:'');
+    $('#reader-content').setAttribute?.('aria-busy','false');
+    $('#reader-status').hidden=true;
+    $('#reader-retry-wrap').hidden=true;
+  }else if(archived){
     const session=documentReaderSession,hasBody=hasDocumentBody(document);
     const waiting=documentWaiting(document)||(document?.bodyStatus==='missing'&&!session.enqueued&&!session.libraryPath);
     const failed=!hasBody&&(!!session.error||document?.bodyStatus==='error'||(!waiting&&!!document));
@@ -756,13 +762,13 @@ function renderReader(error=''){
     $('#reader-status').hidden=metadata?!error:complete&&!error;$('#reader-status').classList.toggle('is-error',failed);
     $('#reader-retry-wrap').hidden=metadata||!failed||article?.access?.allowed===false;
   }
-  $('#reader-analysis').hidden=!aiAnalysisEnabled();$('#reader-analysis').disabled=!article;
+  $('#reader-analysis').hidden=!aiAnalysisEnabled()||!!article?.x_notification;$('#reader-analysis').disabled=!article;
   syncArticleToggle($('#reader-star'),'star',!!article?.starred);
   syncArticleToggle($('#reader-read'),'read',!!article?.is_read);
   $('#reader-star').disabled=!article||readerActionBusy;$('#reader-read').disabled=!article||readerActionBusy;$('#reader-read').hidden=!!documentReaderSession?.libraryPath;$('#reader-prev').hidden=!!documentReaderSession?.libraryPath;$('#reader-next').hidden=!!documentReaderSession?.libraryPath;
   const source=archived?safeExternal(article?.url||document?.url):metadata?originalLink(article):safeExternal(article?.url);$('#reader-source').href=source;$('#reader-source').hidden=!source;$('#reader-source').textContent='原文 ↗';
   const index=state.articles.findIndex(item=>item.id===state.readerId);$('#reader-prev').disabled=index<=0;$('#reader-next').disabled=index<0||index>=state.articles.length-1;
-  globalThis.orletReaderSpeech?.update({key:state.readerId,title:articleTitle(article)});
+  globalThis.orletReaderSpeech?.update({key:article?.x_notification?null:state.readerId,title:articleTitle(article)});
 }
 function applyReader(article,generation){
   if(!readerCurrent(generation)||Number(article?.id)!==state.readerId)return false;
@@ -848,7 +854,8 @@ async function openDocumentReader(id,selected){
       }
     }catch(error){if(documentReaderCurrent(session)&&error.name!=='AbortError')toast('已读状态暂未同步');}
   })();
-  await Promise.all([metadata,loadReaderDocument(session)]);
+  if(!selected)await metadata;
+  await Promise.all([metadata,state.reader?.x_notification?null:loadReaderDocument(session)]);
   if(documentReaderCurrent(session))await refresh();
 }
 function scheduleReader(generation){
