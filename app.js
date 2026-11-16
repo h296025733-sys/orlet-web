@@ -751,6 +751,14 @@ function renderXTranslation(article,doc){
   });
   renderMarkup(host,chunks.length===1?links[0]:`<details><summary>中文翻译</summary><div>${links.join(' ')}</div></details>`);
 }
+function renderXByline(article){
+  const host=$('#reader-x-byline');if(!host)return;
+  host.hidden=article?.platform!=='x'||!article.author;
+  if(host.hidden){renderMarkup(host,'');return;}
+  const time=articleTime(article);
+  renderMarkup(host,`<div class="article-header">${avatarHtml(sourceAvatar(article),article.author.slice(0,1).toUpperCase(),'author-avatar platform-x')}<div class="article-byline"><span class="article-author">${esc(article.author)}</span><span class="article-meta">X${time?' · '+esc(time):''}</span></div></div>`);
+  installAvatars(host);
+}
 function renderReader(error=''){
   const article=state.reader;
   const archived=documentReaderCurrent(),document=state.readerDocument,complete=!archived&&completeContent(article),metadata=!archived&&metadataCard(article);
@@ -783,6 +791,7 @@ function renderReader(error=''){
     $('#reader-status').hidden=metadata?!error:complete&&!error;$('#reader-status').classList.toggle('is-error',failed);
     $('#reader-retry-wrap').hidden=metadata||!failed||article?.access?.allowed===false;
   }
+  renderXByline(article);
   renderXTranslation(article,document);
   $('#reader-analysis').hidden=!aiAnalysisEnabled()||!!article?.x_notification&&!xFull;$('#reader-analysis').disabled=!article;
   syncArticleToggle($('#reader-star'),'star',!!article?.starred);

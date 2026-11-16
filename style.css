@@ -1712,6 +1712,7 @@ main {
 @media(max-width:700px){.activity-tabs{gap:4px;margin-bottom:8px}.activity-tabs button{padding:8px 12px}.operation-row{padding:13px 0}.operation-row p{font-size:14px}.source-manage-actions{flex-wrap:wrap}}
 
 .reader-listen[hidden]{display:none!important}
+.reader-x-byline{margin:0 0 12px}
 .reader-x-translation{margin:0 0 16px;color:var(--accent,#315f7d)}
 .reader-x-translation a{display:inline-flex;align-items:center;min-height:40px}
 .reader-x-translation summary{cursor:pointer;width:fit-content}
