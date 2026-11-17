@@ -1,27 +1,24 @@
-// GitHub Pages only. Configuration contains one public API origin, no secrets.
 (()=>{
-  const nativeFetch=window.fetch.bind(window),configUrl=new URL('./backend.json',document.currentScript.src),known=new Set();
-  let base='',flight=null,changedAt=0;
-  function origin(value){const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||u.pathname!=='/'||u.search||u.hash)throw Error('连接暂时不可用，请稍后重试');return u.origin;}
-  // The build embeds one public starting address. Discovery refreshes in
-  // parallel, so a slow GitHub configuration request cannot block all content.
-  try{const initial=document.currentScript?.dataset?.backend;if(initial){base=origin(initial);known.add(base);}}catch{}
-  function path(value){if(typeof value!=='string')return'';if(value.startsWith('/api/')||value==='/api')return value;try{const u=new URL(value);return known.has(u.origin)&&u.pathname.startsWith('/api/')?u.pathname+u.search:'';}catch{return'';}}
-  async function refresh(force=false){
-    if(flight)return flight;if(!force&&base&&Date.now()-changedAt<30000)return base;
-    flight=(async()=>{const u=new URL(configUrl);u.searchParams.set('v',String(Date.now()));const r=await nativeFetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(6000)});if(!r.ok)throw Error('连接暂时不可用，请稍后重试');const data=await r.json(),next=origin(data.backendOrigin),previous=base;known.add(next);base=next;changedAt=Date.now();if(previous&&previous!==next)window.dispatchEvent(new CustomEvent('orlet-backend-change'));return base;})();
-    try{return await flight;}finally{flight=null;}
+  if(globalThis.orletEntryStarted)return;
+  globalThis.orletEntryStarted=true;
+  let busy=false;
+  async function connect(){
+    if(busy)return;busy=true;
+    const status=document.getElementById('entry-status'),retry=document.getElementById('entry-retry');
+    if(status)status.textContent='正在连接…';if(retry)retry.hidden=true;
+    try{
+      const response=await fetch(new URL('./backend.json',location.href),{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(10000)});
+      if(!response.ok)throw Error('configuration');
+      const {backendOrigin}=await response.json(),origin=new URL(backendOrigin);
+      if(origin.protocol!=='https:'||!/^[-a-z0-9]+\.trycloudflare\.com$/.test(origin.hostname)||origin.username||origin.password||origin.port||origin.pathname!=='/'||origin.search||origin.hash)throw Error('configuration');
+      const target=new URL('/',origin);
+      target.search=location.search;target.hash=location.hash;
+      location.replace(target.href);
+    }catch{
+      if(status)status.textContent='暂时无法连接，请稍后重试。';
+      if(retry)retry.hidden=false;
+    }finally{busy=false;}
   }
-  function url(value){const p=path(value);return p?base+p:value;}
-  async function request(value,options={}){
-    if(!base)await ready.catch(()=>refresh(true));const p=path(value);if(!p)throw Error('请求地址无效');
-    const method=(options.method||'GET').toUpperCase(),headers=new Headers(options.headers||{});if(['GET','HEAD'].includes(method))headers.delete('Content-Type');
-    const send=()=>nativeFetch(base+p,{...options,headers,credentials:'omit'}),before=base;
-    try{const r=await send();if(r.status<500)return r;try{await refresh(true);}catch{}if(base!==before&&['GET','HEAD'].includes(method))return send();return r;}
-    catch(error){if(options.signal?.aborted)throw error;try{await refresh(true);}catch{}if(base!==before&&['GET','HEAD'].includes(method))return send();throw Error('连接暂时不可用，请稍后重试');}
-  }
-  function updateLinks(){for(const a of document.querySelectorAll('a[href]')){const p=path(a.getAttribute('href'));if(p)a.href=url(p);}}
-  const ready=refresh(true);ready.then(updateLinks).catch(()=>{});document.addEventListener('DOMContentLoaded',()=>ready.then(updateLinks).catch(()=>{}));window.addEventListener('orlet-backend-change',updateLinks);
-  window.orletBackend={ready,url,path,request,refresh};
-  setInterval(()=>{if(document.visibilityState!=='hidden')refresh().catch(()=>{});},30000);
+  document.getElementById('entry-retry')?.addEventListener('click',connect);
+  void connect();
 })();
