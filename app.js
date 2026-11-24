@@ -10,7 +10,8 @@
     const response=await fetch(config,{...options,signal:AbortSignal.timeout(4000)});
     if(!response.ok)throw Error('configuration');
     const {backendOrigin}=await response.json(),origin=new URL(backendOrigin);
-    if(origin.protocol!=='https:'||!/^[-a-z0-9]+\.trycloudflare\.com$/.test(origin.hostname)||origin.username||origin.password||origin.port||origin.pathname!=='/'||origin.search||origin.hash)throw Error('configuration');
+    const allowedHost=origin.hostname==='news.attech.hk'||/^[-a-z0-9]+\.trycloudflare\.com$/.test(origin.hostname);
+    if(origin.protocol!=='https:'||!allowedHost||origin.username||origin.password||origin.port||origin.pathname!=='/'||origin.search||origin.hash)throw Error('configuration');
     const check=await fetch(new URL('/api/health',origin),{...options,signal:AbortSignal.timeout(4000)});
     if(!check.ok||(await check.json()).ok!==true)throw Error('gateway');
     const target=new URL('/',origin);
